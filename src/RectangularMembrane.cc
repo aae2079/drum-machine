@@ -62,7 +62,7 @@ void RectangularMembrane::setInitialCondition(){
         for (int jj = 0; jj < ny_; jj ++){
             //ampIn*exp(-alpha*(((i-1)-x_mid)^2+((j-1)-y_mid)^2));
             curr_[ii][jj] = amp * exp(-0.01 * ( (ii - center_x)*(ii - center_x) + (jj - center_y)*(jj - center_y) ) );
-            prev_[ii][jj] = curr_[ii][jj];   
+            //prev_[ii][jj] = curr_[ii][jj];   
         }
     }
 
@@ -82,8 +82,8 @@ void RectangularMembrane::Simulate(std::vector<float>& output_buffer){
     
     */
     for (int tt = 0; tt < num_samples_; tt++){
-        for (int ix = 1; ix < nx_ - 1; ix++){
-            for (int iy = 1; iy < ny_ - 1; iy++){
+        for (int ix = 1; ix < nx_ - 2; ix++){
+            for (int iy = 1; iy < ny_ - 2; iy++){
                 next_[ix][iy] = (1.0 / (1 + damp_ * time_step_ / 2.0)) * (
                    CFL * (curr_[ix+1][iy] + curr_[ix-1][iy] + curr_[ix][iy+1] + curr_[ix][iy-1] - 4.0 * curr_[ix][iy]) +
                    2.0 * curr_[ix][iy] - (1.0 - (damp_ * time_step_ / 2.0)) * prev_[ix][iy]);
