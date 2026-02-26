@@ -17,7 +17,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Find required packages
 find_package(OpenGL REQUIRED)
-find_package(glfw3 3.4 REQUIRED)
+find_package(glfw3 3.3 REQUIRED)
 
 
 # Add source files
