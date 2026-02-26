@@ -11,6 +11,10 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
 endif()
 
+# Set optimization levels for each build type
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fno-omit-frame-pointer -gdwarf-4")
+
 # Set output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -42,24 +46,19 @@ set(HEADERS
 # Create executable
 add_executable(drum-machine ${SOURCES} ${HEADERS})
 
-# GDB-friendly compile flags
-option(ENABLE_GDB_FLAGS "Add gdb-friendly debug compile flags to the target" ON)
-if(ENABLE_GDB_FLAGS)
-    if(MSVC)
-        # MSVC debugging: Program Database and debug info
-        target_compile_options(drum-machine PRIVATE /Zi)
-        # Ensure linker produces debugging information
-        set_target_properties(drum-machine PROPERTIES LINK_FLAGS "/DEBUG")
-    else()
-        # GCC/Clang: include full debug info, disable optimizations, keep frame pointers
-        # On macOS with Apple Clang, use DWARF-4 for better gdb compatibility
-        target_compile_options(drum-machine PRIVATE -g -O0 -fno-omit-frame-pointer -gdwarf-4)
-        # When using Debug build type, add common debug defines
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-            target_compile_definitions(drum-machine PRIVATE DEBUG=1)
-        endif()
+if(MSVC)
+    # MSVC debugging: Program Database and debug info
+    target_compile_options(drum-machine PRIVATE /Zi)
+    # Ensure linker produces debugging information
+    set_target_properties(drum-machine PROPERTIES LINK_FLAGS "/DEBUG")
+# GCC/Clang flags
+else()
+    target_compile_options(drum-machine PRIVATE -fno-omit-frame-pointer)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_compile_definitions(drum-machine PRIVATE DEBUG=1)
     endif()
 endif()
+
 
 target_include_directories(drum-machine 
         PRIVATE 
