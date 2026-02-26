@@ -25,7 +25,7 @@ set(SOURCES
     src/main.cc
     src/glad.c
     #src/CircularMembrane.cpp
-    src/RectangularMembrane.cpp
+    src/RectangularMembrane.cc
     src/audioEngine.cpp
 )
 
