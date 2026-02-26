@@ -4,6 +4,7 @@
 
 #include "audioDefs.h"
 #include <vector>
+#include <cmath>
 
 #define CFL 0.25  // Courant-Friedrichs-Lewy condition for stability
 /*
