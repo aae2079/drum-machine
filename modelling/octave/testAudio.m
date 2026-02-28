@@ -1,4 +1,9 @@
 %Main code
-filepath = '/Users/aaron_escbr/workspace/gitRepos/drum-machine/test/test.wav';
-[y,fs] = audioread(filepath);
-keyboard;
+function [hdr, audio] =testAudio(filepath)
+
+    [audio,fs] = audioread(filepath);
+    hdr = audioinfo(filepath);
+    %keyboard;
+end
+
+

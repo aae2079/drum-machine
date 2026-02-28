@@ -3,7 +3,7 @@
 
 #define SUBCHUNK1SIZE 16
 #define AUDIO_FORMAT_PCM 1
-#define SAMPLE_RATE 44100
+#define SAMPLE_RATE 48000
 #define BIT_DEPTH 16
 #define NUM_CHANNELS 1 //mono for now
 #define BYTE_RATE (SAMPLE_RATE * NUM_CHANNELS * BIT_DEPTH / 8)

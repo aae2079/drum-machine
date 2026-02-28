@@ -5,6 +5,13 @@
 #include <fstream>
 
 
+void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &output) {
+    output.resize(input.size());
+    for (size_t i = 0; i < input.size(); ++i) {
+        output[i] = static_cast<int16_t>(input[i] * 32767); // Scale float to int16 range
+    }
+}
+
 int main(int argc, char** argv){
     std::string output_path;
     if (argc < 2){
@@ -20,7 +27,8 @@ int main(int argc, char** argv){
     std::vector<float> audio_buffer;
     drum.Simulate(audio_buffer);
     //convert float buffer to int16_t for wav file
-    std::vector<int16_t> int16_buffer = reinterpret_cast<std::vector<int16_t>&>(audio_buffer);
+    std::vector<int16_t> int16_buffer;
+    convertFloatToInt16(audio_buffer, int16_buffer);
 
 
     // Build wav file
@@ -59,7 +67,7 @@ int main(int argc, char** argv){
     std::ofstream outFile;
     outFile.open(output_path, std::ios::binary);
     outFile.write((char*)&head, sizeof(WAV_HEADER));
-    outFile.write((char*)int16_buffer.data(), int16_buffer.size() * sizeof(int16_t));
+    outFile.write(reinterpret_cast<const char*>(int16_buffer.data()), int16_buffer.size());
     outFile.close();
     
     // //Write out the audio buffer to a file

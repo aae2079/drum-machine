@@ -7,7 +7,7 @@ RectangularMembrane::RectangularMembrane(int nx, int ny, float damp, float c, fl
 }
 
 RectangularMembrane::RectangularMembrane() 
-    : nx_(128), ny_(128), damp_(0.01), c_(1.0), time_step_(1.0/SAMPLE_RATE), sim_time_(1.0) {
+    : nx_(128), ny_(128), damp_(10.0), c_(1.0), time_step_(1.0/SAMPLE_RATE), sim_time_(2.0) {
     
     // Instantiate grids
     curr_ = std::vector<std::vector<float>>(nx_, std::vector<float>(ny_, 0.0f));
@@ -16,9 +16,6 @@ RectangularMembrane::RectangularMembrane()
 
     // Initialize time vector
     num_samples_ = SAMPLE_RATE * sim_time_; 
-    for (int ii = 0; ii < num_samples_; ii ++){
-        time_.push_back(ii * time_step_);
-    }
 
     // Set boundary conditions
     for (int ii = 0; ii < nx_; ii ++){
@@ -42,7 +39,6 @@ RectangularMembrane::~RectangularMembrane(){
     prev_.clear();
     curr_.clear();
     next_.clear();
-    time_.clear();
 }
 
 void RectangularMembrane::setInitialCondition(){
@@ -56,13 +52,13 @@ void RectangularMembrane::setInitialCondition(){
     // We will start with a simple gaussian strike/pluck
     int center_x = nx_ / 2;
     int center_y = ny_ / 2;
-    float amp = 1.0;
+    float amp = 0.1;
 
-    for (int ii = 0; ii < nx_; ii ++){
-        for (int jj = 0; jj < ny_; jj ++){
+    for (int ii = 1; ii < nx_-1; ii ++){
+        for (int jj = 1; jj < ny_-1; jj ++){
             //ampIn*exp(-alpha*(((i-1)-x_mid)^2+((j-1)-y_mid)^2));
-            curr_[ii][jj] = amp * exp(-0.01 * ( (ii - center_x)*(ii - center_x) + (jj - center_y)*(jj - center_y) ) );
-            //prev_[ii][jj] = curr_[ii][jj];   
+            curr_[ii][jj] = amp * exp(-0.01*(pow(((ii-1)-center_x),2) + pow(((jj-1)-center_y),2)));
+            prev_[ii][jj] = curr_[ii][jj];   
         }
     }
 
@@ -73,7 +69,6 @@ void RectangularMembrane::Simulate(std::vector<float>& output_buffer){
     output_buffer.resize(num_samples_, 0.0f);
 
     /*
-    
     // Discretized equation:
     u^(n+1)_(i,j) = 
     [1 - ηΔt/2] { ρ[u^n_(i+1,j) + u^n_(i-1,j) + 
@@ -82,16 +77,24 @@ void RectangularMembrane::Simulate(std::vector<float>& output_buffer){
     
     */
     for (int tt = 0; tt < num_samples_; tt++){
-        for (int ix = 1; ix < nx_ - 2; ix++){
-            for (int iy = 1; iy < ny_ - 2; iy++){
-                next_[ix][iy] = (1.0 / (1 + damp_ * time_step_ / 2.0)) * (
-                   CFL * (curr_[ix+1][iy] + curr_[ix-1][iy] + curr_[ix][iy+1] + curr_[ix][iy-1] - 4.0 * curr_[ix][iy]) +
-                   2.0 * curr_[ix][iy] - (1.0 - (damp_ * time_step_ / 2.0)) * prev_[ix][iy]);
+        
+        for (int ii = 0; ii < nx_ ; ii++)
+            std::fill(next_[ii].begin(), next_[ii].end(), 0.0f);
+        
+        for (int ix = 1; ix < nx_ - 1; ix++){
+            for (int iy = 1; iy < ny_ - 1; iy++){
+                next_[ix][iy] = (1.0 / (1 + (damp_ * time_step_ / 2.0))) * (CFL * (curr_[ix+1][iy] + 
+                            curr_[ix-1][iy] + 
+                            curr_[ix][iy+1] + 
+                            curr_[ix][iy-1] - 
+                            4.0 * curr_[ix][iy]) +
+                   2.0 * curr_[ix][iy] - 
+                   (1.0 - (damp_ * time_step_ / 2.0)) * prev_[ix][iy]);
             }
         }
         // Update grids for next time step
-        prev_ = curr_;
-        curr_ = next_;
+        std::swap(prev_, curr_);
+        std::swap(curr_, next_);        
 
         // Store displacments at a specific point for audio output
         output_buffer[tt] = curr_[nx_ / 2][ny_ / 2];

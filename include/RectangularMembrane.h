@@ -36,8 +36,6 @@ class RectangularMembrane {
         std::vector<std::vector<float>> curr_;      // Current displacement
         std::vector<std::vector<float>> prev_;  // Previous displacement
         std::vector<std::vector<float>> next_;  // Next displacement
-    
-        std::vector<float> time_;
 
         int num_samples_;
 
