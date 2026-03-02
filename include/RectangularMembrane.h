@@ -5,6 +5,7 @@
 #include "audioDefs.h"
 #include <vector>
 #include <cmath>
+#include <omp.h>
 
 #define CFL 0.25  // Courant-Friedrichs-Lewy condition for stability
 /*
@@ -33,9 +34,9 @@ class RectangularMembrane {
 
         float sim_time_; //Simulation time
 
-        std::vector<std::vector<float>> curr_;      // Current displacement
-        std::vector<std::vector<float>> prev_;  // Previous displacement
-        std::vector<std::vector<float>> next_;  // Next displacement
+        std::vector<float> curr_;      // Current displacement
+        std::vector<float> prev_;  // Previous displacement
+        std::vector<float> next_;  // Next displacement
 
         int num_samples_;
 

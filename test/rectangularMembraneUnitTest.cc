@@ -69,9 +69,4 @@ int main(int argc, char** argv){
     outFile.write((char*)&head, sizeof(WAV_HEADER));
     outFile.write(reinterpret_cast<const char*>(int16_buffer.data()), int16_buffer.size());
     outFile.close();
-    
-    // //Write out the audio buffer to a file
-    // FILE *fp = fopen(output_path.c_str(), "wb");
-    // fwrite(audio_buffer.data(),1, audio_buffer.size() * sizeof(float), fp);
-    // fclose(fp);
 }
