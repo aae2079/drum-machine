@@ -3,6 +3,12 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "drumRenderer.h"
+
+static DrumRenderer gDrum;
+static int gWidth = 900;
+static int gHeight = 900;
+
 int main(void){
     GLFWwindow* window;
 
@@ -17,7 +23,7 @@ int main(void){
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Drum Machine", NULL, NULL);
+    window = glfwCreateWindow(gWidth, gHeight, "Drum Machine", NULL, NULL);
     if (!window){
         glfwTerminate();
         return -1;
@@ -25,8 +31,14 @@ int main(void){
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
-    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+    std::cout << "OpenGL version: " << glGetString(GL_VERSION) << std::endl;
 
+    gDrum.init(gWidth, gHeight);
+    
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)){
         /* Render here */
