@@ -18,8 +18,14 @@ class RectangularMembrane {
         RectangularMembrane(int nx, int ny, float damp, float c, float time_step, float sim_time);
         RectangularMembrane();
         void setInitialCondition();
-        void Simulate(std::vector<float>& output_buffer);
+        void Simulate();
         ~RectangularMembrane();
+        
+        // Getters for visualization
+        int getNx() const { return nx_; }
+        int getNy() const { return ny_; }
+        const std::vector<float>& getCurrentGrid() const { return curr_; }
+        std::vector<float>& getAudioBuffer() { return audioBuf_; }
         
     private:
 
@@ -37,6 +43,8 @@ class RectangularMembrane {
         std::vector<float> curr_;      // Current displacement
         std::vector<float> prev_;  // Previous displacement
         std::vector<float> next_;  // Next displacement
+
+        std::vector<float> audioBuf_; // Buffer to store audio output
 
         int num_samples_;
 

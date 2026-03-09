@@ -83,9 +83,9 @@ void RectangularMembrane::setInitialCondition(){
 
 }
 
-void RectangularMembrane::Simulate(std::vector<float>& output_buffer){
+void RectangularMembrane::Simulate(){
     /* Main simulation loop */
-    output_buffer.resize(num_samples_, 0.0f);
+    audioBuf_.resize(num_samples_, 0.0f);
 
     /*
     // Discretized equation:
@@ -116,6 +116,6 @@ void RectangularMembrane::Simulate(std::vector<float>& output_buffer){
         std::swap(curr_, next_);        
 
         // Store displacments at a specific point for audio output
-        output_buffer[tt] = curr_[nx_ / 2 + (ny_ / 2) * nx_];
+        audioBuf_[tt] = curr_[nx_ / 2 + (ny_ / 2) * nx_];
     }
 }
