@@ -3,11 +3,12 @@
 
 
 #include "audioDefs.h"
+#include "simDefs.h"
 #include <vector>
 #include <cmath>
 #include <omp.h>
 
-#define CFL 0.25  // Courant-Friedrichs-Lewy condition for stability
+
 /*
 Class that generates grid and simulates 2d rectangular membrane vibrations
 using finite difference method to solve the wave equation.
