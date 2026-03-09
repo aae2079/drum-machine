@@ -4,6 +4,8 @@
 #include "wav.hpp"
 #include <fstream>
 
+#define WAVE_FILE 0
+
 
 void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &output) {
     output.resize(input.size());
@@ -13,25 +15,33 @@ void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &
 }
 
 int main(int argc, char** argv){
-    std::string output_path;
-    if (argc < 2){
-        std::cout << "Usage: " << argv[0] << " /file/path/to/output.wav" << std::endl;
-        return -1;
-    }else{
-        output_path = argv[1];
+    std::string input;
+    float sim_time = 2.0f;
+    int num_samples = sim_time * SAMPLE_RATE;
+    int sampsProc = 0;
+
+    std::cout << "Press S to start Drum Simulation: " << std::endl;
+    std::cin >> input;
+
+    if (input == "S" || input == "s"){
+        std::cout << "Starting Drum Simulation..." << std::endl;
+        while (sampsProc < num_samples){
+            membrane.Simulate();
+            sampsProc += membrane.getAudioBuffer().size();
+            //use port audio here to stream audio buffer to output device in real time
+        }
+    } else {
+        std::cout << "Invalid input. Exiting." << std::endl;
+        return 0;
     }
 
-    RectangularMembrane drum;
-
-    drum.setInitialCondition();
-    std::vector<float> audio_buffer;
-    drum.Simulate(audio_buffer);
-    //convert float buffer to int16_t for wav file
-    std::vector<int16_t> int16_buffer;
-    convertFloatToInt16(audio_buffer, int16_buffer);
 
 
     // Build wav file
+#if WAVE_FILE
+
+    std::string output_path = "output.wav";
+
     WAV_HEADER head;
     head.riff[0] = 'R';
     head.riff[1] = 'I';
@@ -69,4 +79,7 @@ int main(int argc, char** argv){
     outFile.write((char*)&head, sizeof(WAV_HEADER));
     outFile.write(reinterpret_cast<const char*>(int16_buffer.data()), int16_buffer.size());
     outFile.close();
+#endif
+
+    return 0;
 }
