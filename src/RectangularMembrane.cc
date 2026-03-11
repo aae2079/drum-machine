@@ -79,7 +79,7 @@ void RectangularMembrane::setInitialCondition(){
 
 void RectangularMembrane::Simulate(){
     /* Main simulation loop */
-    audioBuf_.resize(num_samples_, 0.0f);
+    audioBuf_.resize((int)BUFFER_SIZE, 0.0f);
 
     /*
     // Discretized equation:
@@ -91,10 +91,11 @@ void RectangularMembrane::Simulate(){
     */
 
     //this needs to be done in chunks for real time simulating
-    for (int tt = 0; tt < num_samples_; tt++){
+    for (int tt = 0; tt < (int)BUFFER_SIZE; tt++){
 
         std::fill(next_.begin(), next_.end(), 0.0f); // Clear next grid
         
+        #pragma omp parallel for
         for (int ix = 1; ix < nx_ - 1; ix++){
             for (int iy = 1; iy < ny_ - 1; iy++){
                 next_[ix + iy * nx_] = (1.0 / (1 + (damp_ * time_step_ / 2.0))) * (CFL * (curr_[ix+1 + iy * nx_] + 

@@ -3,10 +3,17 @@
 #include "RectangularMembrane.h"
 #include "wav.hpp"
 #include <fstream>
+#include <cstdint>
+#include <chrono>
 
-#define WAVE_FILE 0
+#define WAVE_FILE 1
 
+int frameCount = 0;
 
+struct DATA {
+    float buf[BUFFER_SIZE];
+    int frameCount;
+};
 void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &output) {
     output.resize(input.size());
     for (size_t i = 0; i < input.size(); ++i) {
@@ -22,13 +29,27 @@ int main(int argc, char** argv){
 
     std::cout << "Press S to start Drum Simulation: " << std::endl;
     std::cin >> input;
+    RectangularMembrane membrane;
 
+     // Store audio buffer
+    std::vector<float> audio_buffer;
+    std::vector<int16_t> int16_buffer;
     if (input == "S" || input == "s"){
         std::cout << "Starting Drum Simulation..." << std::endl;
-        while (sampsProc < num_samples){
+        while (sampsProc <= num_samples){
+            auto start = std::chrono::high_resolution_clock::now();
             membrane.Simulate();
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> duration = end - start;
             sampsProc += membrane.getAudioBuffer().size();
-            //use port audio here to stream audio buffer to output device in real time
+            frameCount++;
+
+            std::cout << "Frame: " << frameCount << ", Samples Processed: " << sampsProc << "/" << num_samples << std::endl;
+            // Append current audio buffer to the main audio buffer
+
+            //print out time taken for each buffer processing
+            std::cout << "Time taken for this buffer: " << duration.count() << " ms" << std::endl;
+           
         }
     } else {
         std::cout << "Invalid input. Exiting." << std::endl;

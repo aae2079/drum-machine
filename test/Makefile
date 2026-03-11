@@ -1,7 +1,7 @@
 # Makefile for RectangularMembrane Unit Test
 
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -g -O0
+CXXFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -O3 -fopenmp
 INCLUDE_DIRS = -I../include -I../dependencies
 SRC_DIR = ../src
 TEST_DIR = .
