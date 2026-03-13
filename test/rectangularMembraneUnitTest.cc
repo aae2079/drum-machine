@@ -2,12 +2,15 @@
 #include <vector>
 #include "RectangularMembrane.h"
 #include "wav.hpp"
+#include "simDefs.h"
 #include <fstream>
 #include <cstdint>
 #include <chrono>
 #include "portaudio.h"
+#include <algorithm>
 
 #define WAVE_FILE 0
+#define PORT_AUDIO 1
 
 struct Data{
     std::vector<float> audio_buffer;
@@ -27,11 +30,14 @@ static int paStreamCB(const void *inputBuffer, void *outputBuffer, unsigned long
                     const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
     Data *data = (Data*)userData;
     float *out = (float*)outputBuffer;
+    int samp = 0;
 
-    // Copy audio data from the global buffer to the output buffer
+    // Copy audio data from the buffer to the output buffer
     for (unsigned long i = 0; i < framesPerBuffer; i++) {
-        if (i < data->audio_buffer.size()) {
-            out[i] = data->audio_buffer[i];
+        if (samp < (int)data->audio_buffer.size()) {
+            // Apply gain to make audio audible (multiply by 5 to amplify)
+            out[i] = data->audio_buffer[samp] * 5.0f;
+            samp++;
         } else {
             out[i] = 0.0f; // Fill remaining buffer with silence
         }
@@ -54,7 +60,7 @@ int main(int argc, char** argv){
     if (err != paNoError) {
         std::cerr << "PortAudio initialization failed: " << Pa_GetErrorText(err)
                     << " (" << err << ")" << std::endl;
-        return -1;
+        Pa_Terminate();
     }
 
     outputParameters.device = Pa_GetDefaultOutputDevice();
@@ -77,68 +83,95 @@ int main(int argc, char** argv){
     std::cin >> input;
     RectangularMembrane membrane;
 
-    // initialize buffers
+    // Initialize the stream ONCE before the loop
+    PaStream *mainStream = nullptr;
+    if (input == "S" || input == "s"){
+        err = Pa_OpenStream(&mainStream, nullptr, &outputParameters, SAMPLE_RATE, BUFFER_SIZE, paClipOff, paStreamCB, &gBuf);
+        if (err != paNoError) {
+            std::cerr << "PortAudio open stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
+            Pa_Terminate();
+            return -1;
+        }
+
+        err = Pa_SetStreamFinishedCallback(mainStream, paStreamFinished);
+        if (err != paNoError) {
+            std::cerr << "PortAudio set stream finished callback failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
+            Pa_CloseStream(mainStream);
+            Pa_Terminate();
+            return -1;
+        }
+
+        err = Pa_StartStream(mainStream);
+        if (err != paNoError) {
+            std::cerr << "PortAudio start stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
+            Pa_CloseStream(mainStream);
+            Pa_Terminate();
+            return -1;
+        }
+    }
+
+    // Initialize buffers
     std::vector<float> audio_buffer;
     std::vector<int16_t> int16_buffer;
     if (input == "S" || input == "s"){
         std::cout << "Starting Drum Simulation..." << std::endl;
-        while (sampsProc <= num_samples){
+        
+        while (gBuf.frameCount < (int)num_samples/BUFFER_SIZE) {
             gBuf.audio_buffer.clear();
             auto start = std::chrono::high_resolution_clock::now();
+            
+            // Generate ONE chunk of 1024 samples
             membrane.Simulate();
+            
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> duration = end - start;
-            sampsProc += membrane.getAudioBuffer().size();
-            //copy current audio buffer to global buffer for streaming
-            gBuf.audio_buffer = membrane.getAudioBuffer();
-            gBuf.frameCount++;
+
+            
+            // Get the last BUFFER_SIZE samples from the audio buffer for streaming
+            const auto& fullBuffer = membrane.getAudioBuffer();
+            int startIdx = std::max(0, (int)fullBuffer.size() - BUFFER_SIZE);
+            gBuf.audio_buffer.assign(fullBuffer.begin() + startIdx, fullBuffer.end());
+            
+            // Pad with zeros if needed
+            if (gBuf.audio_buffer.size() < BUFFER_SIZE) {
+                gBuf.audio_buffer.resize(BUFFER_SIZE, 0.0f);
+            }
+            
+            // Reset frame count for callback
+            gBuf.frameCount = 0;
             std::cout << "Frame: " << gBuf.frameCount << ", Samples Processed: " << sampsProc << "/" << num_samples << std::endl;
-            std::cout << "Time taken for this buffer: " << duration.count() << " ms" << std::endl;
+            std::cout << "Time taken for chunk: " << duration.count() << " ms" << std::endl;
 
             #if WAVE_FILE
             // Append current audio buffer to the main audio buffer
             audio_buffer.insert(audio_buffer.end(), membrane.getAudioBuffer().begin(), membrane.getAudioBuffer().end());
             convertFloatToInt16(audio_buffer, int16_buffer);
             #endif
+
+            gBuf.frameCount++;
             
-            // Stream audio to output device
-            err = Pa_OpenStream(&stream, nullptr, &outputParameters, SAMPLE_RATE, BUFFER_SIZE, paClipOff, paStreamCB, &gBuf);
-            if (err != paNoError) {
-                std::cerr << "PortAudio open stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
-                break;
-            }
-
-            err = Pa_SetStreamFinishedCallback(stream, paStreamFinished);
-            if (err != paNoError) {
-                std::cerr << "PortAudio set stream finished callback failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
-                break;
-            }
-
-            err = Pa_StartStream(stream);
-            if (err != paNoError) {
-                std::cerr << "PortAudio start stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
-                break;
-            }
-
-            err = Pa_StopStream(stream);
-            if (err != paNoError) {
-                std::cerr << "PortAudio stop stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
-                break;
-            }
-            err = Pa_CloseStream(stream);
-            if (err != paNoError) {
-                std::cerr << "PortAudio close stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
-                break;
-            }
-            Pa_Terminate();
-            std::cout << "Finished streaming audio buffer." << std::endl;
+            // Small delay to prevent busy-waiting
+            Pa_Sleep(10);
         }
     } else {
         std::cout << "Invalid input. Exiting." << std::endl;
         return 0;
     }
 
+    // Stop and close stream
+    if (mainStream != nullptr) {
+        err = Pa_StopStream(mainStream);
+        if (err != paNoError) {
+            std::cerr << "PortAudio stop stream failed: " << Pa_GetErrorText(err) << std::endl;
+        }
+        err = Pa_CloseStream(mainStream);
+        if (err != paNoError) {
+            std::cerr << "PortAudio close stream failed: " << Pa_GetErrorText(err) << std::endl;
+        }
+    }
 
+    std::cout << "Simulation complete. Waiting for audio playback to finish..." << std::endl;
+    Pa_Sleep(2000); // Wait 2 seconds for audio to finish playing
 
     // Build wav file
 #if WAVE_FILE
@@ -183,6 +216,8 @@ int main(int argc, char** argv){
     outFile.write(reinterpret_cast<const char*>(int16_buffer.data()), int16_buffer.size());
     outFile.close();
 #endif
+
+    Pa_Terminate();
 
     return 0;
 }
