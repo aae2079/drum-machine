@@ -3,11 +3,12 @@
 
 
 #include "audioDefs.h"
+#include "simDefs.h"
 #include <vector>
 #include <cmath>
 #include <omp.h>
 
-#define CFL 0.25  // Courant-Friedrichs-Lewy condition for stability
+
 /*
 Class that generates grid and simulates 2d rectangular membrane vibrations
 using finite difference method to solve the wave equation.
@@ -18,8 +19,14 @@ class RectangularMembrane {
         RectangularMembrane(int nx, int ny, float damp, float c, float time_step, float sim_time);
         RectangularMembrane();
         void setInitialCondition();
-        void Simulate(std::vector<float>& output_buffer);
+        void Simulate();
         ~RectangularMembrane();
+        
+        // Getters for visualization
+        int getNx() const { return nx_; }
+        int getNy() const { return ny_; }
+        const std::vector<float>& getCurrentGrid() const { return curr_; }
+        std::vector<float>& getAudioBuffer() { return audioBuf_; }
         
     private:
 
@@ -38,7 +45,12 @@ class RectangularMembrane {
         std::vector<float> prev_;  // Previous displacement
         std::vector<float> next_;  // Next displacement
 
+        std::vector<float> audioBuf_; // Buffer to store audio output
+        std::vector<float> histBuf_; // Buffer to store historical audio output for streaming
+
         int num_samples_;
+
+        int firstTime = 1; // Flag to indicate if it's the first time step
 
 };
 

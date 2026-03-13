@@ -7,23 +7,15 @@ RectangularMembrane::RectangularMembrane(int nx, int ny, float damp, float c, fl
 }
 
 RectangularMembrane::RectangularMembrane() 
-    : nx_(128), ny_(128), damp_(10.0), c_(1.0), time_step_(1.0/SAMPLE_RATE), sim_time_(2.0) {
+
+
+    // comstructor  builds the grid and sets initla conditions 
+    : nx_(GRID_X), ny_(GRID_Y), damp_(10.0), c_(1.0), time_step_(1.0/SAMPLE_RATE), sim_time_(2.0) {
     
     // Instantiate grids
     curr_ = std::vector<float>(nx_ * ny_, 0.0f);
     prev_ = std::vector<float>(nx_ * ny_, 0.0f);
     next_ = std::vector<float>(nx_ * ny_, 0.0f);
-
-    // Initialize time vector
-    num_samples_ = SAMPLE_RATE * sim_time_; 
-
-    // Set boundary conditions
-    // for (int ii = 0; ii < nx_; ii ++){
-    //     curr_[ii][0] = 0.0f;
-    //     curr_[ii][ny_ -1] = 0.0f;
-    //     prev_[ii][0] = 0.0f;
-    //     prev_[ii][ny_ -1] = 0.0f;
-    // }
 
     /*
             nx
@@ -48,6 +40,8 @@ RectangularMembrane::RectangularMembrane()
         prev_[(jj + 1) * nx_ - 1] = 0.0f;
     }
 
+    setInitialCondition();
+
 
 }
 
@@ -56,6 +50,8 @@ RectangularMembrane::~RectangularMembrane(){
     prev_.clear();
     curr_.clear();
     next_.clear();
+    histBuf_.clear();
+    audioBuf_.clear();
 }
 
 void RectangularMembrane::setInitialCondition(){
@@ -83,9 +79,11 @@ void RectangularMembrane::setInitialCondition(){
 
 }
 
-void RectangularMembrane::Simulate(std::vector<float>& output_buffer){
+void RectangularMembrane::Simulate(){
     /* Main simulation loop */
-    output_buffer.resize(num_samples_, 0.0f);
+    audioBuf_.resize((int)BUFFER_SIZE, 0.0f);
+    histBuf_.resize((int)OVERLAP, 0.0f);
+    std::vector<float> curBuf(BUFFER_SIZE, 0.0f);
 
     /*
     // Discretized equation:
@@ -95,7 +93,9 @@ void RectangularMembrane::Simulate(std::vector<float>& output_buffer){
                     2u^n_(i,j) - [1 - ηΔt/2]u^(n-1)_(i,j) }
     
     */
-    for (int tt = 0; tt < num_samples_; tt++){
+
+    //this needs to be done in chunks for real time simulating
+    for (int tt = 0; tt < (int)BUFFER_SIZE; tt++){
 
         std::fill(next_.begin(), next_.end(), 0.0f); // Clear next grid
         
@@ -116,6 +116,21 @@ void RectangularMembrane::Simulate(std::vector<float>& output_buffer){
         std::swap(curr_, next_);        
 
         // Store displacments at a specific point for audio output
-        output_buffer[tt] = curr_[nx_ / 2 + (ny_ / 2) * nx_];
+        curBuf[tt] = curr_[nx_ / 2 + (ny_ / 2) * nx_];
+    }
+
+    if (firstTime){
+        audioBuf_ = curBuf;
+        std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin()); // get the last OVERLAP samples
+        firstTime = false;
+    } else {
+        // Append new chunk to audio buffer
+        audioBuf_.clear();
+        audioBuf_.insert(audioBuf_.end(), histBuf_.begin(), histBuf_.end());
+        audioBuf_.insert(audioBuf_.end(), curBuf.begin(), curBuf.end() - (int)OVERLAP);
+
+        // Reset histBuf_ to last OVERLAP samples of curBuf for next chunk
+        histBuf_.clear();
+        std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
     }
 }

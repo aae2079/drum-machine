@@ -13,7 +13,7 @@ endif()
 
 # Set optimization levels for each build type
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fno-omit-frame-pointer -gdwarf-4")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 
 # Set output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -22,6 +22,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # Find required packages
 find_package(OpenGL REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
+find_package(OpenMP REQUIRED)
 
 
 # Add source files
@@ -31,6 +32,7 @@ set(SOURCES
     #src/CircularMembrane.cpp
     src/RectangularMembrane.cc
     src/audioEngine.cpp
+    src/drumRenderer.cpp
 )
 
 set(HEADERS
@@ -39,6 +41,7 @@ set(HEADERS
     include/Surface.h
     include/audioDefs.h
     include/strikeDefs.h
+    include/drumRenderer.h
     dependencies/glad/glad.h
     dependencies/KHR/khrplatform.h
 )
@@ -53,7 +56,7 @@ if(MSVC)
     set_target_properties(drum-machine PROPERTIES LINK_FLAGS "/DEBUG")
 # GCC/Clang flags
 else()
-    target_compile_options(drum-machine PRIVATE -fno-omit-frame-pointer)
+    target_compile_options(drum-machine PRIVATE -fno-omit-frame-pointer -gdwarf-4 -fopenmp)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_definitions(drum-machine PRIVATE DEBUG=1)
     endif()
@@ -71,6 +74,7 @@ target_link_libraries(drum-machine
     PRIVATE
         OpenGL::GL
         glfw
+        OpenMP::OpenMP_CXX
 )
 
 
