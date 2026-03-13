@@ -18,6 +18,7 @@ struct Data{
 };
 
 Data gBuf;
+int firstTime = 1;
 
 void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &output) {
     output.resize(input.size());
@@ -83,11 +84,9 @@ int main(int argc, char** argv){
     std::string input;
     float sim_time = 2.0f;
     int num_samples = sim_time * SAMPLE_RATE;
-    int sampsProc = 0;
 
-    std::cout << "Press S to start Drum Simulation: " << std::endl;
-    std::cin >> input;
-    RectangularMembrane membrane;
+
+
 
     // Initialize the stream ONCE before the loop
     #if PORT_AUDIO
@@ -121,65 +120,80 @@ int main(int argc, char** argv){
     // Initialize buffers
     std::vector<float> audio_buffer;
     std::vector<int16_t> int16_buffer;
-    if (input == "S" || input == "s"){
-        std::cout << "Starting Drum Simulation..." << std::endl;
+
+    //Real-time mechanicism 
+    while (1){
+
+        if (firstTime){
+            std::cout << "Press S to start Drum Simulation: (E to exit) " << std::endl;
+            firstTime = 0;
+        }else{
+            std::cout << "Press S to go again! (E to exit) " << std::endl;
+        }
         
-        while (gBuf.frameCount <= (int)num_samples/BUFFER_SIZE) {
-            gBuf.audio_buffer.clear();
-            auto start = std::chrono::high_resolution_clock::now();
-            
-            // Generate ONE chunk of 1024 samples
-            membrane.Simulate();
-            
-            auto end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::milli> duration = end - start;
+        std::cin >> input;
+        
+        if (input == "S" || input == "s"){
+            std::cout << "Starting Drum Simulation..." << std::endl;
+            int sampsProc = 0;
+            RectangularMembrane membrane;
+            while (sampsProc < num_samples) {
+                gBuf.audio_buffer.clear();
+                auto start = std::chrono::high_resolution_clock::now();
+                
+                // Generate ONE chunk of 1024 samples
+                membrane.Simulate();
+                
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> duration = end - start;
 
-            
-            // Get the last BUFFER_SIZE samples from the audio buffer for streaming
-            const auto& fullBuffer = membrane.getAudioBuffer();
-            int startIdx = std::max(0, (int)fullBuffer.size() - BUFFER_SIZE);
-            gBuf.audio_buffer.assign(fullBuffer.begin() + startIdx, fullBuffer.end());
-            
-            // Pad with zeros if needed
-            if (gBuf.audio_buffer.size() < BUFFER_SIZE) {
-                gBuf.audio_buffer.resize(BUFFER_SIZE, 0.0f);
+
+                gBuf.audio_buffer = membrane.getAudioBuffer();
+                
+                
+                // Reset frame count for callback
+                std::cout << "Frame: " << gBuf.frameCount << ", Samples Processed: " << sampsProc << "/" << num_samples << std::endl;
+                std::cout << "Time taken for chunk: " << duration.count() << " ms" << std::endl;
+
+                #if WAVE_FILE
+                // Append current audio buffer to the main audio buffer
+                //Be aware of overlap!
+                audio_buffer.insert(audio_buffer.end(), membrane.getAudioBuffer().begin(), membrane.getAudioBuffer().end()-(int)OVERLAP);
+                convertFloatToInt16(audio_buffer, int16_buffer);
+                #endif
+
+                gBuf.frameCount++;
+                
+                // Small delay to prevent busy-waiting
+                #if PORT_AUDIO
+                Pa_Sleep(10);
+                #endif
+
+                sampsProc += BUFFER_SIZE - (int)OVERLAP; // Account for overlap
             }
-            
-            // Reset frame count for callback
-            std::cout << "Frame: " << gBuf.frameCount << ", Samples Processed: " << sampsProc << "/" << num_samples << std::endl;
-            std::cout << "Time taken for chunk: " << duration.count() << " ms" << std::endl;
-
-            #if WAVE_FILE
-            // Append current audio buffer to the main audio buffer
-            //Be aware of overlap!
-            audio_buffer.insert(audio_buffer.end(), membrane.getAudioBuffer().begin(), membrane.getAudioBuffer().end()-(int)OVERLAP);
-            convertFloatToInt16(audio_buffer, int16_buffer);
-            #endif
-
-            gBuf.frameCount++;
-            
-            // Small delay to prevent busy-waiting
-            #if PORT_AUDIO
-            Pa_Sleep(10);
-            #endif
+        } else if(input == "E" || input == "e"){
+            std::cout << "Exiting Drum Simulation..." << std::endl;
+            break;
+        } else {
+            std::cout << "Invalid input. Please press S to start or E to exit." << std::endl;
         }
-    } else {
-        std::cout << "Invalid input. Exiting." << std::endl;
-        return 0;
+        #if PORT_AUDIO
+        // Stop and close stream
+        if (mainStream != nullptr) {
+            err = Pa_StopStream(mainStream);
+            if (err != paNoError) {
+                std::cerr << "PortAudio stop stream failed: " << Pa_GetErrorText(err) << std::endl;
+            }
+            err = Pa_CloseStream(mainStream);
+            if (err != paNoError) {
+                std::cerr << "PortAudio close stream failed: " << Pa_GetErrorText(err) << std::endl;
+            }
+        }
+        #endif
+
     }
+
     #if PORT_AUDIO
-    // Stop and close stream
-    if (mainStream != nullptr) {
-        err = Pa_StopStream(mainStream);
-        if (err != paNoError) {
-            std::cerr << "PortAudio stop stream failed: " << Pa_GetErrorText(err) << std::endl;
-        }
-        err = Pa_CloseStream(mainStream);
-        if (err != paNoError) {
-            std::cerr << "PortAudio close stream failed: " << Pa_GetErrorText(err) << std::endl;
-        }
-    }
-
     std::cout << "Simulation complete. Waiting for audio playback to finish..." << std::endl;
     Pa_Sleep(2000); // Wait 2 seconds for audio to finish playing
 
