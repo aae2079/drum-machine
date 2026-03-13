@@ -50,6 +50,8 @@ RectangularMembrane::~RectangularMembrane(){
     prev_.clear();
     curr_.clear();
     next_.clear();
+    histBuf_.clear();
+    audioBuf_.clear();
 }
 
 void RectangularMembrane::setInitialCondition(){
@@ -80,6 +82,8 @@ void RectangularMembrane::setInitialCondition(){
 void RectangularMembrane::Simulate(){
     /* Main simulation loop */
     audioBuf_.resize((int)BUFFER_SIZE, 0.0f);
+    histBuf_.resize((int)OVERLAP, 0.0f);
+    std::vector<float> curBuf(BUFFER_SIZE, 0.0f);
 
     /*
     // Discretized equation:
@@ -112,6 +116,21 @@ void RectangularMembrane::Simulate(){
         std::swap(curr_, next_);        
 
         // Store displacments at a specific point for audio output
-        audioBuf_[tt] = curr_[nx_ / 2 + (ny_ / 2) * nx_];
+        curBuf[tt] = curr_[nx_ / 2 + (ny_ / 2) * nx_];
+    }
+
+    if (firstTime){
+        audioBuf_ = curBuf;
+        std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin()); // get the last OVERLAP samples
+        firstTime = false;
+    } else {
+        // Append new chunk to audio buffer
+        audioBuf_.clear();
+        audioBuf_.insert(audioBuf_.end(), histBuf_.begin(), histBuf_.end());
+        audioBuf_.insert(audioBuf_.end(), curBuf.begin(), curBuf.end() - (int)OVERLAP);
+
+        // Reset histBuf_ to last OVERLAP samples of curBuf for next chunk
+        histBuf_.clear();
+        std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
     }
 }

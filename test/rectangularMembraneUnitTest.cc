@@ -9,11 +9,11 @@
 #include "portaudio.h"
 #include <algorithm>
 
-#define WAVE_FILE 0
-#define PORT_AUDIO 1
+#define WAVE_FILE 1
+#define PORT_AUDIO 0
 
 struct Data{
-    std::vector<float> audio_buffer;
+    std::vector<float> audio_buffer; 
     int frameCount{0};
 };
 
@@ -25,6 +25,8 @@ void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &
         output[i] = static_cast<int16_t>(input[i] * 32767); // Scale float to int16 range
     }
 }
+
+#if PORT_AUDIO
 
 static int paStreamCB(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                     const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
@@ -49,9 +51,11 @@ static int paStreamCB(const void *inputBuffer, void *outputBuffer, unsigned long
 static void paStreamFinished(void *userData) {
     std::cout << "PortAudio stream finished callback called." << std::endl;
 }
-
+#endif
 
 int main(int argc, char** argv){
+
+    #if PORT_AUDIO
     PaStreamParameters outputParameters;
     PaStream *stream;
     PaError err;
@@ -61,6 +65,7 @@ int main(int argc, char** argv){
         std::cerr << "PortAudio initialization failed: " << Pa_GetErrorText(err)
                     << " (" << err << ")" << std::endl;
         Pa_Terminate();
+        return -1;
     }
 
     outputParameters.device = Pa_GetDefaultOutputDevice();
@@ -73,6 +78,7 @@ int main(int argc, char** argv){
     outputParameters.sampleFormat = paFloat32; // 32-bit float output
     outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
     outputParameters.hostApiSpecificStreamInfo = nullptr;
+    #endif
 
     std::string input;
     float sim_time = 2.0f;
@@ -84,6 +90,7 @@ int main(int argc, char** argv){
     RectangularMembrane membrane;
 
     // Initialize the stream ONCE before the loop
+    #if PORT_AUDIO
     PaStream *mainStream = nullptr;
     if (input == "S" || input == "s"){
         err = Pa_OpenStream(&mainStream, nullptr, &outputParameters, SAMPLE_RATE, BUFFER_SIZE, paClipOff, paStreamCB, &gBuf);
@@ -109,6 +116,7 @@ int main(int argc, char** argv){
             return -1;
         }
     }
+    #endif
 
     // Initialize buffers
     std::vector<float> audio_buffer;
@@ -116,7 +124,7 @@ int main(int argc, char** argv){
     if (input == "S" || input == "s"){
         std::cout << "Starting Drum Simulation..." << std::endl;
         
-        while (gBuf.frameCount < (int)num_samples/BUFFER_SIZE) {
+        while (gBuf.frameCount <= (int)num_samples/BUFFER_SIZE) {
             gBuf.audio_buffer.clear();
             auto start = std::chrono::high_resolution_clock::now();
             
@@ -138,26 +146,28 @@ int main(int argc, char** argv){
             }
             
             // Reset frame count for callback
-            gBuf.frameCount = 0;
             std::cout << "Frame: " << gBuf.frameCount << ", Samples Processed: " << sampsProc << "/" << num_samples << std::endl;
             std::cout << "Time taken for chunk: " << duration.count() << " ms" << std::endl;
 
             #if WAVE_FILE
             // Append current audio buffer to the main audio buffer
-            audio_buffer.insert(audio_buffer.end(), membrane.getAudioBuffer().begin(), membrane.getAudioBuffer().end());
+            //Be aware of overlap!
+            audio_buffer.insert(audio_buffer.end(), membrane.getAudioBuffer().begin(), membrane.getAudioBuffer().end()-(int)OVERLAP);
             convertFloatToInt16(audio_buffer, int16_buffer);
             #endif
 
             gBuf.frameCount++;
             
             // Small delay to prevent busy-waiting
+            #if PORT_AUDIO
             Pa_Sleep(10);
+            #endif
         }
     } else {
         std::cout << "Invalid input. Exiting." << std::endl;
         return 0;
     }
-
+    #if PORT_AUDIO
     // Stop and close stream
     if (mainStream != nullptr) {
         err = Pa_StopStream(mainStream);
@@ -173,6 +183,8 @@ int main(int argc, char** argv){
     std::cout << "Simulation complete. Waiting for audio playback to finish..." << std::endl;
     Pa_Sleep(2000); // Wait 2 seconds for audio to finish playing
 
+    Pa_Terminate();
+    #endif
     // Build wav file
 #if WAVE_FILE
 
@@ -217,7 +229,7 @@ int main(int argc, char** argv){
     outFile.close();
 #endif
 
-    Pa_Terminate();
+    
 
     return 0;
 }
