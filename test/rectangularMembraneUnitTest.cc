@@ -9,8 +9,8 @@
 #include "portaudio.h"
 #include <algorithm>
 
-#define WAVE_FILE 1
-#define PORT_AUDIO 0
+#define WAVE_FILE 0
+#define PORT_AUDIO 1
 
 struct Data{
     std::vector<float> audio_buffer; 
@@ -91,30 +91,30 @@ int main(int argc, char** argv){
     // Initialize the stream ONCE before the loop
     #if PORT_AUDIO
     PaStream *mainStream = nullptr;
-    if (input == "S" || input == "s"){
-        err = Pa_OpenStream(&mainStream, nullptr, &outputParameters, SAMPLE_RATE, BUFFER_SIZE, paClipOff, paStreamCB, &gBuf);
-        if (err != paNoError) {
-            std::cerr << "PortAudio open stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
-            Pa_Terminate();
-            return -1;
-        }
 
-        err = Pa_SetStreamFinishedCallback(mainStream, paStreamFinished);
-        if (err != paNoError) {
-            std::cerr << "PortAudio set stream finished callback failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
-            Pa_CloseStream(mainStream);
-            Pa_Terminate();
-            return -1;
-        }
-
-        err = Pa_StartStream(mainStream);
-        if (err != paNoError) {
-            std::cerr << "PortAudio start stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
-            Pa_CloseStream(mainStream);
-            Pa_Terminate();
-            return -1;
-        }
+    err = Pa_OpenStream(&mainStream, nullptr, &outputParameters, SAMPLE_RATE, BUFFER_SIZE, paClipOff, paStreamCB, &gBuf);
+    if (err != paNoError) {
+        std::cerr << "PortAudio open stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
+        Pa_Terminate();
+        return -1;
     }
+
+    err = Pa_SetStreamFinishedCallback(mainStream, paStreamFinished);
+    if (err != paNoError) {
+        std::cerr << "PortAudio set stream finished callback failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
+        Pa_CloseStream(mainStream);
+        Pa_Terminate();
+        return -1;
+    }
+
+    err = Pa_StartStream(mainStream);
+    if (err != paNoError) {
+        std::cerr << "PortAudio start stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
+        Pa_CloseStream(mainStream);
+        Pa_Terminate();
+        return -1;
+    }
+    
     #endif
 
     // Initialize buffers
@@ -177,28 +177,29 @@ int main(int argc, char** argv){
         } else {
             std::cout << "Invalid input. Please press S to start or E to exit." << std::endl;
         }
-        #if PORT_AUDIO
-        // Stop and close stream
-        if (mainStream != nullptr) {
-            err = Pa_StopStream(mainStream);
-            if (err != paNoError) {
-                std::cerr << "PortAudio stop stream failed: " << Pa_GetErrorText(err) << std::endl;
-            }
-            err = Pa_CloseStream(mainStream);
-            if (err != paNoError) {
-                std::cerr << "PortAudio close stream failed: " << Pa_GetErrorText(err) << std::endl;
-            }
-        }
-        #endif
 
     }
 
     #if PORT_AUDIO
+    // Stop and close stream
+    if (mainStream != nullptr) {
+        err = Pa_StopStream(mainStream);
+        if (err != paNoError) {
+            std::cerr << "PortAudio stop stream failed: " << Pa_GetErrorText(err) << std::endl;
+        }
+        err = Pa_CloseStream(mainStream);
+        if (err != paNoError) {
+            std::cerr << "PortAudio close stream failed: " << Pa_GetErrorText(err) << std::endl;
+        }
+    }
     std::cout << "Simulation complete. Waiting for audio playback to finish..." << std::endl;
     Pa_Sleep(2000); // Wait 2 seconds for audio to finish playing
 
     Pa_Terminate();
     #endif
+
+
+
     // Build wav file
 #if WAVE_FILE
 
