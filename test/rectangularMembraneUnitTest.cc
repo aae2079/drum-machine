@@ -1,8 +1,8 @@
 #include <iostream>
 #include <vector>
-#include "RectangularMembrane.h"
+#include "RectangularMembrane.hpp"
 #include "wav.hpp"
-#include "simDefs.h"
+#include "simDefs.hpp"
 #include <fstream>
 #include <cstdint>
 #include <chrono>

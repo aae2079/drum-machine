@@ -35,11 +35,11 @@ set(SOURCES
 )
 
 set(HEADERS
-    #include/CircularMembrane.h
-    include/RectangularMembrane.h
-    include/Surface.h
-    include/audioDefs.h
-    include/strikeDefs.h
+    #include/CircularMembrane.hpp
+    include/RectangularMembrane.hpp
+    include/Surface.hpp
+    include/audioDefs.hpp
+    include/strikeDefs.hpp
     dependencies/glad/glad.h
     dependencies/KHR/khrplatform.h
 )

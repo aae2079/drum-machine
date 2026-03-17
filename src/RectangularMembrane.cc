@@ -1,4 +1,4 @@
-#include "RectangularMembrane.h"
+#include "RectangularMembrane.hpp"
 
 
 RectangularMembrane::RectangularMembrane(int nx, int ny, float damp, float c, float time_step, float sim_time)
