@@ -22,7 +22,8 @@ function [hdr, audio] = testAudio(filepath,varargin)
     end
 
     if plays
-        sound(audio, fs);
+        %gain factor to increase the volume of the audio
+        sound(15.0*audio, fs);
     end
 end
 

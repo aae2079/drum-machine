@@ -8,14 +8,22 @@
 #include <chrono>
 #include "portaudio.h"
 #include <algorithm>
+#include <cstring>
 
 #define WAVE_FILE 0
 #define PORT_AUDIO 1
+
+#define NUM_FRAMES 5
 
 struct Data{
     std::vector<float> audio_buffer; 
     int frameCount{0};
 };
+
+std::vector<Data> ringBuf(NUM_FRAMES);
+int fill_ix = 0;
+int read_ix = 0;
+int buf_pos = 0;
 
 Data gBuf;
 int firstTime = 1;
@@ -31,20 +39,36 @@ void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &
 
 static int paStreamCB(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                     const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
-    Data *data = (Data*)userData;
-    float *out = (float*)outputBuffer;
-    int samp = 0;
+    std::vector<Data> *ringBufPtr = static_cast<std::vector<Data>*>(userData);
+    float *out = static_cast<float*>(outputBuffer);
+    unsigned long filled = 0;
+    while(filled < framesPerBuffer){
+        Data &cur = (*ringBufPtr)[read_ix];
 
-    // Copy audio data from the buffer to the output buffer
-    for (unsigned long i = 0; i < framesPerBuffer; i++) {
-        if (samp < (int)data->audio_buffer.size()) {
-            // Apply gain to make audio audible (multiply by 5 to amplify)
-            out[i] = data->audio_buffer[samp] * 5.0f;
-            samp++;
-        } else {
-            out[i] = 0.0f; // Fill remaining buffer with silence
+        if (cur.audio_buffer.empty() || cur.frameCount == 0){
+            // If no data, output silence
+            std::fill(out + filled, out + framesPerBuffer, 0.0f);
+            break;
+        }
+
+        int available = (int)cur.audio_buffer.size() - buf_pos;
+        int needed    = (int)(framesPerBuffer - filled);
+        int to_copy   = std::min(available, needed);
+
+        std::memcpy(out + filled, cur.audio_buffer.data() + buf_pos, to_copy * sizeof(float));
+
+        filled  += to_copy;
+        buf_pos += to_copy;
+
+        // Current Data chunk exhausted — advance ring buffer
+        if (buf_pos >= (int)cur.audio_buffer.size()) {
+            cur.frameCount = 0;           // Mark slot as consumed so main thread can reuse
+            cur.audio_buffer.clear();
+            read_ix = (read_ix + 1) % NUM_FRAMES;
+            buf_pos = 0;
         }
     }
+    
 
     return paContinue;
 }
@@ -92,7 +116,7 @@ int main(int argc, char** argv){
     #if PORT_AUDIO
     PaStream *mainStream = nullptr;
 
-    err = Pa_OpenStream(&mainStream, nullptr, &outputParameters, SAMPLE_RATE, BUFFER_SIZE, paClipOff, paStreamCB, &gBuf);
+    err = Pa_OpenStream(&mainStream, nullptr, &outputParameters, SAMPLE_RATE, BUFFER_SIZE, paClipOff, paStreamCB, &ringBuf);
     if (err != paNoError) {
         std::cerr << "PortAudio open stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
         Pa_Terminate();
@@ -147,13 +171,19 @@ int main(int argc, char** argv){
                 auto end = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double, std::milli> duration = end - start;
 
-
+                //Fill msg
                 gBuf.audio_buffer = membrane.getAudioBuffer();
+                gBuf.frameCount++;
+                while (ringBuf[fill_ix].frameCount != 0) {
+                    Pa_Sleep(1); // Wait for the callback to consume the slot
+                }
                 
+                ringBuf[fill_ix] = gBuf; // Copy current buffer to ring buffer
+                fill_ix = (fill_ix + 1) % NUM_FRAMES; // Increment fill index with wrap-around
                 
-                // Reset frame count for callback
-                std::cout << "Frame: " << gBuf.frameCount << ", Samples Processed: " << sampsProc << "/" << num_samples << std::endl;
-                std::cout << "Time taken for chunk: " << duration.count() << " ms" << std::endl;
+                // // Reset frame count for callback
+                // std::cout << "Frame: " << gBuf.frameCount << ", Samples Processed: " << sampsProc << "/" << num_samples << std::endl;
+                // std::cout << "Time taken for chunk: " << duration.count() << " ms" << std::endl;
 
                 #if WAVE_FILE
                 // Append current audio buffer to the main audio buffer
@@ -162,11 +192,11 @@ int main(int argc, char** argv){
                 convertFloatToInt16(audio_buffer, int16_buffer);
                 #endif
 
-                gBuf.frameCount++;
+                
                 
                 // Small delay to prevent busy-waiting
                 #if PORT_AUDIO
-                Pa_Sleep(10);
+                Pa_Sleep(BUFFER_SIZE / SAMPLE_RATE * 1000); // Sleep for the duration of one buffer
                 #endif
 
                 sampsProc += BUFFER_SIZE - (int)OVERLAP; // Account for overlap
