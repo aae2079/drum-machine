@@ -32,7 +32,6 @@ set(SOURCES
     #src/CircularMembrane.cpp
     src/RectangularMembrane.cc
     src/audioEngine.cpp
-    src/drumRenderer.cpp
 )
 
 set(HEADERS
@@ -41,7 +40,6 @@ set(HEADERS
     include/Surface.h
     include/audioDefs.h
     include/strikeDefs.h
-    include/drumRenderer.h
     dependencies/glad/glad.h
     dependencies/KHR/khrplatform.h
 )
