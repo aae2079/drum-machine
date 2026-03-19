@@ -8,7 +8,7 @@ SRC_DIR = ../src
 TEST_DIR = .
 
 # Source files
-SOURCES = $(SRC_DIR)/RectangularMembrane.cc
+SOURCES = $(SRC_DIR)/RectangularMembrane.cc $(SRC_DIR)/audioEngine.cc
 
 TEST_SOURCES = $(TEST_DIR)/rectangularMembraneUnitTest.cc
 
