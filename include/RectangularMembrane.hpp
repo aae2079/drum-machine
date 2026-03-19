@@ -2,8 +2,8 @@
 #define RECTANGULAR_MEMBRANE_H
 
 
-#include "audioDefs.h"
-#include "simDefs.h"
+#include "audioDefs.hpp"
+#include "simDefs.hpp"
 #include <vector>
 #include <cmath>
 #include <omp.h>
@@ -46,8 +46,11 @@ class RectangularMembrane {
         std::vector<float> next_;  // Next displacement
 
         std::vector<float> audioBuf_; // Buffer to store audio output
+        std::vector<float> histBuf_; // Buffer to store historical audio output for streaming
 
         int num_samples_;
+
+        int firstTime = 1; // Flag to indicate if it's the first time step
 
 };
 

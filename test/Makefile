@@ -1,13 +1,14 @@
 # Makefile for RectangularMembrane Unit Test
 
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -g -O0
+CXXFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -O3 -fopenmp
 INCLUDE_DIRS = -I../include -I../dependencies
+LIBS = -lportaudio
 SRC_DIR = ../src
 TEST_DIR = .
 
 # Source files
-SOURCES = $(SRC_DIR)/RectangularMembrane.cc
+SOURCES = $(SRC_DIR)/RectangularMembrane.cc $(SRC_DIR)/audioEngine.cc
 
 TEST_SOURCES = $(TEST_DIR)/rectangularMembraneUnitTest.cc
 
@@ -20,7 +21,7 @@ all: $(TARGET)
 
 # Build the executable
 $(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -o $@ $^
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -o $@ $^ $(LIBS)
 	@echo "Build complete: $@"
 
 # Compile C++ source files
