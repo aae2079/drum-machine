@@ -13,7 +13,7 @@
 
 struct Data{
     std::vector<float> audio_buffer; 
-    int frameCount;
+    int full;
 };
 
 class AudioEngine {

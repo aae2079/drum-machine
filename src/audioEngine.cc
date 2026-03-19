@@ -71,8 +71,8 @@ void AudioEngine::pushChunk(const float* buffer, size_t numSamples) {
    //push audio data into the ring buffer for playbac
     Data cur;
     cur.audio_buffer.assign(buffer, buffer + numSamples);
-    cur.frameCount = frame++;
-    while (ringBuf[fill_ix].frameCount != 0) {
+    cur.full = 1;
+    while (ringBuf[fill_ix].full != 0) {
         Pa_Sleep(1); // Wait for the callback to consume the slot
     }
     ringBuf[fill_ix] = cur; // Copy current buffer to ring buffer
@@ -98,8 +98,7 @@ int AudioEngine::internalAudioCB(float *out, unsigned long frames){
     
     while(filled < frames){
         Data &cur = ringBuf[read_ix];
-
-        if (cur.audio_buffer.empty() || cur.frameCount == 0){
+        if (cur.audio_buffer.empty() || cur.full == 0){
             // If no data, output silence
             std::fill(out + filled, out + frames, 0.0f);
             break;
@@ -116,7 +115,7 @@ int AudioEngine::internalAudioCB(float *out, unsigned long frames){
 
         // Current Data chunk exhausted — advance ring buffer
         if (buf_pos >= (int)cur.audio_buffer.size()) {
-            cur.frameCount = 0;           // Mark slot as consumed so main thread can reuse
+            cur.full = 0;           // Mark slot as consumed so main thread can reuse
             cur.audio_buffer.clear();
             read_ix = (read_ix + 1) % NUM_FRAMES;
             buf_pos = 0;
