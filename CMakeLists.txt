@@ -23,6 +23,8 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 
 
 # Add source files
@@ -31,7 +33,9 @@ set(SOURCES
     src/glad.c
     #src/CircularMembrane.cpp
     src/RectangularMembrane.cc
-    src/audioEngine.cpp
+    src/audioEngine.cc
+    src/drumRenderer.cc
+    #src/drum_renderer.cpp
 )
 
 set(HEADERS
@@ -40,8 +44,11 @@ set(HEADERS
     include/Surface.hpp
     include/audioDefs.hpp
     include/strikeDefs.hpp
+    include/drumRenderer.hpp
+    #include/drum_renderer.h
     dependencies/glad/glad.h
     dependencies/KHR/khrplatform.h
+    /usr/include/portaudio.h
 )
 
 # Create executable
@@ -65,6 +72,7 @@ target_include_directories(drum-machine
         PRIVATE 
         include
         dependencies
+        ${PORTAUDIO_INCLUDE_DIRS}
 )
 
 # Link libraries
@@ -73,6 +81,7 @@ target_link_libraries(drum-machine
         OpenGL::GL
         glfw
         OpenMP::OpenMP_CXX
+        ${PORTAUDIO_LIBRARIES}
 )
 
 
