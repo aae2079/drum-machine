@@ -3,7 +3,7 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -O3 -fopenmp
 INCLUDE_DIRS = -I../include -I../dependencies
-LIBS = -lportaudio
+LIBS = -lportaudio -llog4cxx -lfmt
 SRC_DIR = ../src
 TEST_DIR = .
 

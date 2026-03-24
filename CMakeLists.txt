@@ -23,6 +23,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(log4cxx REQUIRED)
 
 
 # Add source files
@@ -73,6 +74,7 @@ target_link_libraries(drum-machine
         OpenGL::GL
         glfw
         OpenMP::OpenMP_CXX
+        log4cxx
 )
 
 
