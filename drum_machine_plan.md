@@ -37,15 +37,48 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the F
 
 ---
 
-## Phase 2: Basic GUI Setup (Week 2)
+## Phase 2: Audio Integration (Week 2)
 
-### Task 2.1: Choose and Integrate GUI Library
+### Task 2.1: Extract Audio from Simulation
+- [x] Choose sampling point(s) on membrane (center or average of region)
+- [x] Convert displacement to audio amplitude
+- [x] Accumulate samples at 44.1kHz in circular buffer
+- [x] Handle sample rate conversion if physics timestep ≠ audio sample period
+- [x] Normalize audio output to prevent clipping
+
+### Task 2.2: Implement Audio Output
+- [x] Or use PortAudio for more control
+- [x] Set up thread-safe audio buffer (lock-free ring buffer)
+- [x] Initialize audio device: 44.1kHz, 16-bit, mono or stereo
+- [x] Create CLI user control
+
+### Task 2.3: Synchronize Audio and Visual
+- [x] Ensure physics timestep produces exactly 44100 samples/sec
+- [x] Calculate required physics steps: `physicsStepsPerSecond = sampleRate`
+- [x] Verify no audio glitches or pops
+- [x] Add audio on/off toggle (M key for mute)
+- [x] Implement WAV file export for debugging
+
+### Task 2.4: Parameter Tuning for Drum-like Sound
+- [x] Tune wave speed `c` (affects pitch)
+- [x] Tune damping factor (affects decay time)
+- [x] Tune strike intensity and width
+- [x] Experiment with membrane size
+- [x] Test different sampling positions "mic placement"
+
+**Deliverable**: Audible drum sound
+
+---
+
+## Phase 3: Basic GUI Setup (Week 3)
+
+### Task 3.1: Choose and Integrate GUI Library
 - [x] Install GLFW and GLAD
 - [ ] Link libraries in build system
 - [ ] Create basic window (512x512 or 800x600)
 - [ ] Set up render loop at 60 FPS
 
-### Task 2.2: Render Membrane Visualization
+### Task 3.2: Render Membrane Visualization
 - [ ] Map displacement values to colors:
   - Negative displacement → Blue
   - Zero displacement → Gray/White
@@ -56,7 +89,7 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the F
 - [ ] Update texture/surface each frame
 - [ ] Add FPS counter display
 
-### Task 2.3: Real-time Simulation Loop
+### Task 3.3: Real-time Simulation Loop
 - [ ] Decouple physics timestep from render framerate
 - [ ] Physics: 10-50 substeps per render frame (tune for stability)
 - [ ] Implement game loop:
@@ -75,38 +108,6 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the F
 - [ ] Visual confirmation of wave propagation
 
 **Deliverable**: Window showing animated membrane with hard-coded strike
-
----
-
-## Phase 3: Audio Integration (Week 3)
-
-### Task 3.1: Extract Audio from Simulation
-- [x] Choose sampling point(s) on membrane (center or average of region)
-- [x] Convert displacement to audio amplitude
-- [x] Accumulate samples at 44.1kHz in circular buffer
-- [x] Handle sample rate conversion if physics timestep ≠ audio sample period
-- [x] Normalize audio output to prevent clipping
-
-### Task 3.2: Implement Audio Output
-- [x] Or use PortAudio for more control
-- [x] Set up thread-safe audio buffer (lock-free ring buffer)
-- [x] Initialize audio device: 44.1kHz, 16-bit, mono or stereo
-
-### Task 3.3: Synchronize Audio and Visual
-- [ ] Ensure physics timestep produces exactly 44100 samples/sec
-- [ ] Calculate required physics steps: `physicsStepsPerSecond = sampleRate`
-- [ ] Verify no audio glitches or pops
-- [ ] Add audio on/off toggle (M key for mute)
-- [ ] Implement WAV file export for debugging
-
-### Task 3.4: Parameter Tuning for Drum-like Sound
-- [ ] Tune wave speed `c` (affects pitch)
-- [ ] Tune damping factor (affects decay time)
-- [ ] Tune strike intensity and width
-- [ ] Experiment with membrane size
-- [ ] Test different sampling positions
-
-**Deliverable**: Audible drum sound synchronized with visual membrane
 
 ---
 
@@ -460,12 +461,5 @@ drum-machine/
 - "The Audio Programming Book" by Boulanger & Lazzarini
 
 ---
-
-## Notes
-- This plan is modular: you can stop at any MVP and have a working product
-- Phases 8-10 are optional enhancements
-- Adjust timeline based on your available time and experience level
-- Consider using Git branches for experimental features
-- Join communities: r/DSP, r/audioengineering, r/cpp for help
 
 Good luck with your drum machine! 🥁
