@@ -5,7 +5,7 @@ BUILD_DIR="$SCRIPT_DIR/build"
 
 cd "$BUILD_DIR" || { echo "Build directory not found!"; exit 1; }
 rm -rf ./*
-cmake .. -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/bin/g++ >> build.log 2>&1
+cmake .. -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig/portaudio-2.0.pc -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/bin/g++ >> build.log 2>&1
 cmake --build . >> build.log 2>&1
 if [ $? -ne 0 ]; then
     echo "Build failed! Check build/build.log for details."

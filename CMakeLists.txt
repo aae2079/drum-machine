@@ -23,6 +23,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(glm REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 
@@ -30,11 +31,15 @@ pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 # Add source files
 set(SOURCES
     src/main.cc
-    src/glad.c
     #src/CircularMembrane.cpp
-    src/RectangularMembrane.cc
-    src/audioEngine.cc
-    src/drumRenderer.cc
+    src/backend/RectangularMembrane.cc
+    src/backend/audioEngine.cc
+    src/frontend/drumRenderer.cc
+    src/frontend/VAO.cpp
+    src/frontend/VBO.cpp
+    src/frontend/EBO.cpp
+    src/frontend/shaderClass.cpp
+    src/3rdparty/glad.c
     #src/drum_renderer.cpp
 )
 
@@ -45,6 +50,10 @@ set(HEADERS
     include/audioDefs.hpp
     include/strikeDefs.hpp
     include/drumRenderer.hpp
+    include/VBO.hpp
+    include/VAO.hpp
+    include/EBO.hpp
+    include/shaderClass.hpp
     #include/drum_renderer.h
     dependencies/glad/glad.h
     dependencies/KHR/khrplatform.h
