@@ -4,7 +4,7 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/matrix_transform.hpp>
 #include<glm/gtc/type_ptr.hpp>
-#include "drumRenderer.hpp"
+#include <vector>
 #include "simDefs.hpp"
 #include "VAO.hpp"
 #include "VBO.hpp"
@@ -15,20 +15,68 @@ const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
 
 
-// Vertices coordinates
-GLfloat vertices[] =
-{ //     COORDINATES     /        COLORS        /    TexCoord    /       NORMALS     //
-	-1.0f, 0.0f,  1.0f,		0.0f, 0.0f, 0.0f,		0.0f, 0.0f,		0.0f, 1.0f, 0.0f,
-	-1.0f, 0.0f, -1.0f,		0.0f, 0.0f, 0.0f,		0.0f, 1.0f,		0.0f, 1.0f, 0.0f,
-	 1.0f, 0.0f, -1.0f,		0.0f, 0.0f, 0.0f,		1.0f, 1.0f,		0.0f, 1.0f, 0.0f,
-	 1.0f, 0.0f,  1.0f,		0.0f, 0.0f, 0.0f,		1.0f, 0.0f,		0.0f, 1.0f, 0.0f
-};
+// // Vertices coordinates
+// GLfloat vertices[] =
+// { //     COORDINATES     /        COLORS        /    TexCoord    /       NORMALS     //
+// 	-1.0f, 0.0f,  1.0f,		0.0f, 0.0f, 0.0f,		0.0f, 0.0f,		0.0f, 1.0f, 0.0f,
+// 	-1.0f, 0.0f, -1.0f,		0.0f, 0.0f, 0.0f,		0.0f, 1.0f,		0.0f, 1.0f, 0.0f,
+// 	 1.0f, 0.0f, -1.0f,		0.0f, 0.0f, 0.0f,		1.0f, 1.0f,		0.0f, 1.0f, 0.0f,
+// 	 1.0f, 0.0f,  1.0f,		0.0f, 0.0f, 0.0f,		1.0f, 0.0f,		0.0f, 1.0f, 0.0f
+// };
 
-// Indices for vertices order
-GLuint indices[] =
-{
-	0, 1, 2,
-	0, 2, 3
+// // Indices for vertices order
+// GLuint indices[] =
+// {
+// 	0, 1, 2,
+// 	0, 2, 3
+// };
+
+std::vector<GLfloat> vertices;
+std::vector<GLuint> indices;
+
+void initShape(void){
+	for(int i = 0; i < GRID_X; i++){
+		for (int j = 0; j < GRID_Y; j++){
+			float x = (float)j / (GRID_X - 1) * 2.0f - 1.0f; 
+			float z = (float)i / (GRID_Y - 1) * 2.0f - 1.0f;
+			float y = 0.0f; 
+
+			// position
+			vertices.push_back(x);
+			vertices.push_back(y);
+			vertices.push_back(z);
+			// color
+			vertices.push_back(0.0f);
+			vertices.push_back(0.0f);
+			vertices.push_back(0.0f);
+			// TexCoord
+			vertices.push_back((float)j / (GRID_Y - 1));
+			vertices.push_back((float)i / (GRID_X - 1));
+			// normal
+			vertices.push_back(0.0f);
+			vertices.push_back(1.0f);
+			vertices.push_back(0.0f);
+		}
+	}
+
+	// Generate indices
+	for (int i = 0; i < GRID_X - 1; i++) {
+		for (int j = 0; j < GRID_Y - 1; j++) {
+			int topLeft     = i * GRID_X + j;
+			int topRight    = i * GRID_Y + j + 1;
+			int bottomLeft  = (i + 1) * GRID_X + j;
+			int bottomRight = (i + 1) * GRID_Y + j + 1;
+
+			// triangle 1
+			indices.push_back(topLeft);
+			indices.push_back(bottomLeft);
+			indices.push_back(topRight);
+			// triangle 2
+			indices.push_back(topRight);
+			indices.push_back(bottomLeft);
+			indices.push_back(bottomRight);
+		}
+	}
 };
 
 
@@ -38,6 +86,7 @@ int main(void) {
         return -1;
     }
 
+	initShape();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -63,9 +112,9 @@ int main(void) {
 	VAO VAO1;
 	VAO1.Bind();
 	// Generates Vertex Buffer Object and links it to vertices
-	VBO VBO1(vertices, sizeof(vertices));
+	VBO VBO1(vertices.data(), vertices.size());
 	// Generates Element Buffer Object and links it to indices
-	EBO EBO1(indices, sizeof(indices));
+	EBO EBO1(indices.data(), indices.size());
 	// Links VBO attributes such as coordinates and colors to VAO
 	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
 	VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 11 * sizeof(float), (void*)(3 * sizeof(float)));

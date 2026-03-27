@@ -34,7 +34,6 @@ set(SOURCES
     #src/CircularMembrane.cpp
     src/backend/RectangularMembrane.cc
     src/backend/audioEngine.cc
-    src/frontend/drumRenderer.cc
     src/frontend/VAO.cpp
     src/frontend/VBO.cpp
     src/frontend/EBO.cpp
@@ -49,7 +48,6 @@ set(HEADERS
     include/Surface.hpp
     include/audioDefs.hpp
     include/strikeDefs.hpp
-    include/drumRenderer.hpp
     include/VBO.hpp
     include/VAO.hpp
     include/EBO.hpp
