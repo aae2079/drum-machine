@@ -12,6 +12,7 @@
 #include <cstring>
 #include <log4cxx/logger.h>
 #include <log4cxx/basicconfigurator.h>
+#include <log4cxx/level.h>
 #include <fmt/format.h>
 
 #define WAVE_FILE 1
@@ -19,9 +20,8 @@
 
 static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("RECTANGULAR_MEMBRANE_UNIT_TEST"));
 
-int firstTime = 1;
 
-#define LOG4CXX_DEBUG(logger,expression)
+int firstTime = 1;
 void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &output) {
     output.resize(input.size());
     for (size_t i = 0; i < input.size(); ++i) {
@@ -29,8 +29,9 @@ void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &
     }
 }
 
-int main(int argc, char** argv){
+int main(void){
     log4cxx::BasicConfigurator::configure();
+    //logger->setLevel(log4cxx::Level::getInfo());
     std::string input;
     float sim_time = 2.0f;
     int num_samples = sim_time * SAMPLE_RATE;
@@ -57,7 +58,7 @@ int main(int argc, char** argv){
         std::cin >> input;
         
         if (input == "S" || input == "s"){
-            LOG4CXX_INFO(logger, "Starting Drum Simulation...");
+            std::cout << "Starting Drum Simulation..." << std::endl;
             int sampsProc = 0;
             RectangularMembrane membrane;
             while (sampsProc < num_samples) {
@@ -73,10 +74,8 @@ int main(int argc, char** argv){
                 audio.pushChunk(membrane.getAudioBuffer().data(),membrane.getAudioBuffer().size());
                 #endif
                 
-                //Need to set some kind of logger here
-                // std::cout << "Frame: " << gBuf.frameCount << ", Samples Processed: " << sampsProc << "/" << num_samples << std::endl;
-                // std::cout << "Time taken for chunk: " << duration.count() << " ms" << std::endl;
                 LOG4CXX_DEBUG_FMT(logger,"Time taken for chunk: {}",duration.count());
+                LOG4CXX_DEBUG_FMT(logger, "Samps Processed: {}/{}",sampsProc,num_samples);
 
                 #if WAVE_FILE
                 // Append current audio buffer to the main audio buffer
