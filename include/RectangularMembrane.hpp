@@ -25,7 +25,7 @@ class RectangularMembrane {
         // Getters for visualization
         int getNx() const { return nx_; }
         int getNy() const { return ny_; }
-        const std::vector<float>& getCurrentGrid() const { return curr_; }
+        std::vector<float>& getCurrentGrid() { return curr_; }
         std::vector<float>& getAudioBuffer() { return audioBuf_; }
         
     private:

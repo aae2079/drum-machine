@@ -10,6 +10,7 @@
 #include "VBO.hpp"
 #include "EBO.hpp"
 #include "shaderClass.hpp"
+#include "RectangularMembrane.hpp"
 
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
@@ -34,6 +35,8 @@ const unsigned int HEIGHT = 480;
 std::vector<GLfloat> vertices;
 std::vector<GLuint> indices;
 
+
+ 
 void initShape(void){
 	for(int i = 0; i < GRID_X; i++){
 		for (int j = 0; j < GRID_Y; j++){
@@ -63,9 +66,9 @@ void initShape(void){
 	for (int i = 0; i < GRID_X - 1; i++) {
 		for (int j = 0; j < GRID_Y - 1; j++) {
 			int topLeft     = i * GRID_X + j;
-			int topRight    = i * GRID_Y + j + 1;
+			int topRight    = i * GRID_X + j + 1;
 			int bottomLeft  = (i + 1) * GRID_X + j;
-			int bottomRight = (i + 1) * GRID_Y + j + 1;
+			int bottomRight = (i + 1) * GRID_X + j + 1;
 
 			// triangle 1
 			indices.push_back(topLeft);
@@ -85,8 +88,8 @@ int main(void) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return -1;
     }
+    RectangularMembrane membrane;
 
-	initShape();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -105,6 +108,8 @@ int main(void) {
 
     glViewport(0,0, WIDTH, HEIGHT);
 
+    //patch y
+	initShape();
     // Generates Shader object using shaders default.vert and default.frag
 	Shader shaderProgram("default.vert", "default.frag");
 
@@ -112,9 +117,9 @@ int main(void) {
 	VAO VAO1;
 	VAO1.Bind();
 	// Generates Vertex Buffer Object and links it to vertices
-	VBO VBO1(vertices.data(), vertices.size());
+	VBO VBO1(vertices.data(), vertices.size() * sizeof(GLfloat));
 	// Generates Element Buffer Object and links it to indices
-	EBO EBO1(indices.data(), indices.size());
+	EBO EBO1(indices.data(), indices.size() * sizeof(GLuint));
 	// Links VBO attributes such as coordinates and colors to VAO
 	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
 	VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 11 * sizeof(float), (void*)(3 * sizeof(float)));
@@ -128,9 +133,29 @@ int main(void) {
     // Gets ID of uniform called "scale"
 	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
 
+    // Variables that help the rotation of the pyramid
+	float rotation = -30.0f;
+    float tilt = 15.0f;
+	double prevTime = glfwGetTime();
+
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     while (!glfwWindowShouldClose(window)) {
+
+        // Step sim and update mesh
+        membrane.Simulate();
+        for (int i = 0; i < GRID_X; i++) {
+            for (int j = 0; j < GRID_Y; j++) {
+                int vertexStart = (i * GRID_X + j) * 11;
+                vertices[vertexStart + 1] = membrane.getCurrentGrid()[j + i * GRID_X];
+            }
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, VBO1.ID);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(GLfloat), vertices.data());
+
 
         // Specify the color of the background
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
@@ -139,14 +164,25 @@ int main(void) {
 		// Tell OpenGL which Shader Program we want to use
 		shaderProgram.Activate();
 
-        		// Initializes matrices so they are not the null matrix
+        // Replace with:
+        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+            rotation -= 1.0f;
+        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+            rotation += 1.0f;
+        if (glfwGetKey(window,GLFW_KEY_UP) == GLFW_PRESS)
+            tilt += 1.0f;
+        if(glfwGetKey(window,GLFW_KEY_DOWN) == GLFW_PRESS)
+            tilt -= 1.0f;
+
+        // Initializes matrices so they are not the null matrix
 		glm::mat4 model = glm::mat4(1.0f);
 		glm::mat4 view = glm::mat4(1.0f);
 		glm::mat4 proj = glm::mat4(1.0f);
 
 		// Assigns different transformations to each matrix
-		model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
 		view = glm::translate(view, glm::vec3(0.0f, -0.5f, -3.5f));
+        view = glm::rotate(view, glm::radians(tilt), glm::vec3(1.0f, 0.0f, 0.0f));  
 		proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
 
 		// Outputs the matrices into the Vertex Shader
@@ -162,7 +198,7 @@ int main(void) {
 
         VAO1.Bind();
 
-        glDrawElements(GL_TRIANGLES,sizeof(indices)/sizeof(int),GL_UNSIGNED_INT,0);
+        glDrawElements(GL_TRIANGLES,indices.size(),GL_UNSIGNED_INT,0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
