@@ -88,7 +88,10 @@ int main(void) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return -1;
     }
-    RectangularMembrane membrane;
+
+	std::string input;
+    float sim_time = 2.0f;
+    int num_samples = sim_time * SAMPLE_RATE;
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -144,64 +147,85 @@ int main(void) {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     while (!glfwWindowShouldClose(window)) {
+		std::cout << "Press S to start Drum Simulation: (E to exit) " << std::endl;
+		std::cin >> input;
+		if (input == "S" || input == "s"){
+			 std::cout << "Starting Drum Simulation..." << std::endl;
+            int sampsProc = 0;
+            RectangularMembrane membrane;
+			while (sampsProc < num_samples){
+				auto start = std::chrono::high_resolution_clock::now();
+                // Generate ONE chunk of 1024 samples
+                membrane.Simulate();
+				auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> duration = end - start;
+				
+				for (int i = 0; i < GRID_X; i++) {
+            		for (int j = 0; j < GRID_Y; j++) {
+                		int vertexStart = (i * GRID_X + j) * 11;
+                		vertices[vertexStart + 1] = membrane.getCurrentGrid()[j + i * GRID_X];
+            		}
+        		}
+				glBindBuffer(GL_ARRAY_BUFFER, VBO1.ID);
+				glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(GLfloat), vertices.data());
 
-        // Step sim and update mesh
-        membrane.Simulate();
-        for (int i = 0; i < GRID_X; i++) {
-            for (int j = 0; j < GRID_Y; j++) {
-                int vertexStart = (i * GRID_X + j) * 11;
-                vertices[vertexStart + 1] = membrane.getCurrentGrid()[j + i * GRID_X];
-            }
+
+				// Specify the color of the background
+				glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+				// Clean the back buffer and depth buffer
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				// Tell OpenGL which Shader Program we want to use
+				shaderProgram.Activate();
+
+				// Replace with:
+				if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+					rotation -= 1.0f;
+				if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+					rotation += 1.0f;
+				if (glfwGetKey(window,GLFW_KEY_UP) == GLFW_PRESS)
+					tilt += 1.0f;
+				if(glfwGetKey(window,GLFW_KEY_DOWN) == GLFW_PRESS)
+					tilt -= 1.0f;
+
+				// Initializes matrices so they are not the null matrix
+				glm::mat4 model = glm::mat4(1.0f);
+				glm::mat4 view = glm::mat4(1.0f);
+				glm::mat4 proj = glm::mat4(1.0f);
+
+				// Assigns different transformations to each matrix
+				model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+				view = glm::translate(view, glm::vec3(0.0f, -0.5f, -3.5f));
+				view = glm::rotate(view, glm::radians(tilt), glm::vec3(1.0f, 0.0f, 0.0f));  
+				proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
+
+				// Outputs the matrices into the Vertex Shader
+				int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+				int viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
+				glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+				int projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
+				glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
+
+				// Assigns a value to the uniform; NOTE: Must always be done after activating the Shader Program
+				glUniform1f(uniID, 0.5f);
+
+				VAO1.Bind();
+
+				glDrawElements(GL_TRIANGLES,indices.size(),GL_UNSIGNED_INT,0);
+
+				glfwSwapBuffers(window);
+				glfwPollEvents();
+				sampsProc += BUFFER_SIZE-(int)OVERLAP;
+
+			}
+		}else if(input == "E" || input == "e"){
+            std::cout << "Exiting Drum Simulation..." << std::endl;
+            break;
+        } else {
+            std::cout << "Invalid input. Please press S to start or E to exit." << std::endl;
         }
-        glBindBuffer(GL_ARRAY_BUFFER, VBO1.ID);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(GLfloat), vertices.data());
-
-
-        // Specify the color of the background
-		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-		// Clean the back buffer and depth buffer
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		// Tell OpenGL which Shader Program we want to use
-		shaderProgram.Activate();
-
-        // Replace with:
-        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-            rotation -= 1.0f;
-        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-            rotation += 1.0f;
-        if (glfwGetKey(window,GLFW_KEY_UP) == GLFW_PRESS)
-            tilt += 1.0f;
-        if(glfwGetKey(window,GLFW_KEY_DOWN) == GLFW_PRESS)
-            tilt -= 1.0f;
-
-        // Initializes matrices so they are not the null matrix
-		glm::mat4 model = glm::mat4(1.0f);
-		glm::mat4 view = glm::mat4(1.0f);
-		glm::mat4 proj = glm::mat4(1.0f);
-
-		// Assigns different transformations to each matrix
-		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-		view = glm::translate(view, glm::vec3(0.0f, -0.5f, -3.5f));
-        view = glm::rotate(view, glm::radians(tilt), glm::vec3(1.0f, 0.0f, 0.0f));  
-		proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
-
-		// Outputs the matrices into the Vertex Shader
-		int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		int viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-		int projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
-		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
-
-		// Assigns a value to the uniform; NOTE: Must always be done after activating the Shader Program
-		glUniform1f(uniID, 0.5f);
-
-        VAO1.Bind();
-
-        glDrawElements(GL_TRIANGLES,indices.size(),GL_UNSIGNED_INT,0);
-
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+       
+        
     }
     VAO1.Delete();
     VBO1.Delete();

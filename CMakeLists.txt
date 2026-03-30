@@ -55,7 +55,7 @@ set(HEADERS
     #include/drum_renderer.h
     dependencies/glad/glad.h
     dependencies/KHR/khrplatform.h
-    /usr/include/portaudio.h
+    #/usr/include/portaudio.h
 )
 
 # Create executable
@@ -68,7 +68,7 @@ if(MSVC)
     set_target_properties(drum-machine PROPERTIES LINK_FLAGS "/DEBUG")
 # GCC/Clang flags
 else()
-    target_compile_options(drum-machine PRIVATE -fno-omit-frame-pointer -gdwarf-4 -fopenmp)
+    target_compile_options(drum-machine PRIVATE -fno-omit-frame-pointer -gdwarf-4)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_definitions(drum-machine PRIVATE DEBUG=1)
     endif()
@@ -81,6 +81,8 @@ target_include_directories(drum-machine
         dependencies
         ${PORTAUDIO_INCLUDE_DIRS}
 )
+
+target_link_directories(drum-machine PRIVATE ${PORTAUDIO_LIBRARY_DIRS})
 
 # Link libraries
 target_link_libraries(drum-machine
