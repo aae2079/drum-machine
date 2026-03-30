@@ -5,36 +5,99 @@
 
 using namespace std;
 
-DrumRenderer::DrumRenderer(int nx, int ny, float damp, float c, float time_step, float sim_time, uint64_t wWidth, uint64_t wHeight)
-            :RectangularMembrane(int nx, int ny, float damp, float c, float time_step, float sim_time),WIDTH(wWidth),HEIGHT(wHeight){
+DrumRenderer::DrumRenderer(uint64_t wWidth, uint64_t wHeight, const char* windowTitle)
+        : WIDTH(wWidth), HEIGHT(wHeight){
 
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-
-        GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Drum Machine", NULL, NULL);
-        if (!window) {
-            std::cerr << "Failed to create GLFW window" << std::endl;
-            glfwTerminate();
-            return -1;
-        }
-
-        glfwMakeContextCurrent(window);
-        gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-
-        glViewport(0,0, WIDTH, HEIGHT);
-
-        buildMesh();
 
 }
 
-void DrumRenderer::compileShaders(const char *vertexFile, const char *fragmentFile)
-                    : vertexFile_(vertexFile), fragmentFile_(fragmentFile){
+bool DrumRenderer::init(){
+    
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW" << std::endl;
+        return false;
+    }
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+
+    window = glfwCreateWindow(WIDTH, HEIGHT, "Drum Machine", NULL, NULL);
+    if (!window) {
+        std::cerr << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return false;
+    }
+
+    glfwMakeContextCurrent(window);
+    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+    glViewport(0,0, WIDTH, HEIGHT);
+
+    buildMesh();
+
+    return true;
+}
+
+void buildMesh(){
+    for(int i = 0; i < GRID_X; i++){
+		for (int j = 0; j < GRID_Y; j++){
+			float x = (float)j / (GRID_X - 1) * 2.0f - 1.0f; 
+			float z = (float)i / (GRID_Y - 1) * 2.0f - 1.0f;
+			float y = 0.0f; 
+
+			// position
+			vertices.push_back(x);
+			vertices.push_back(y);
+			vertices.push_back(z);
+			// color
+			vertices.push_back(0.0f);
+			vertices.push_back(0.0f);
+			vertices.push_back(0.0f);
+			// TexCoord
+			vertices.push_back((float)j / (GRID_Y - 1));
+			vertices.push_back((float)i / (GRID_X - 1));
+			// normal
+			vertices.push_back(0.0f);
+			vertices.push_back(1.0f);
+			vertices.push_back(0.0f);
+		}
+	}
+
+	// Generate indices
+	for (int i = 0; i < GRID_X - 1; i++) {
+		for (int j = 0; j < GRID_Y - 1; j++) {
+			int topLeft     = i * GRID_X + j;
+			int topRight    = i * GRID_X + j + 1;
+			int bottomLeft  = (i + 1) * GRID_X + j;
+			int bottomRight = (i + 1) * GRID_X + j + 1;
+
+			// triangle 1
+			indices.push_back(topLeft);
+			indices.push_back(bottomLeft);
+			indices.push_back(topRight);
+			// triangle 2
+			indices.push_back(topRight);
+			indices.push_back(bottomLeft);
+			indices.push_back(bottomRight);
+		}
+	}
+
+    createBuffers(vertices.data(), vertices.size() * sizeof(GLfloat),
+                  indices.data(), indices.size() * sizeof(GLuint));
+    setupVertexAttributes();
+}
+
+
+bool DrumRenderer::shouldClose() const
+{
+    return glfwWindowShouldClose(window);
+}
+
+void DrumRenderer::compileShaders(const char *vertexFile, const char *fragmentFile){
     // Read vertexFile and fragmentFile and store the strings
-	std::string vertexCode = getShaderContents(vertexFile_);
-	std::string fragmentCode = getShaderConents(fragmentFile_);
+	std::string vertexCode = getShaderContents(vertexFile);
+	std::string fragmentCode = getShaderContents(fragmentFile);
 
 	// Convert the shader source strings into character arrays
 	const char* vertexSource = vertexCode.c_str();
@@ -73,186 +136,150 @@ void DrumRenderer::compileShaders(const char *vertexFile, const char *fragmentFi
 	glDeleteShader(fragmentShader);
 }
 
-void DrumRenderer::initSimulation(){
-    // Get grid dimensions from membrane
-    gridSize_ = membrane_.getNx();
-    
-    const int N2 = gridSize_ * gridSize_;
-    inside_.resize(N2);
-    displacements_.resize(N2, 0.0f);
-    
-    float span = 2.0f; // -1 to 1
-    float dx = span / (gridSize_ - 1);
-    
-    for (int ii = 0; ii < gridSize_; ii++){
-        for (int jj = 0; jj < gridSize_; jj++){
-            float x = -1.0f + ii * dx;
-            float y = -1.0f + jj * dx;
-            inside_[idx_(ii, jj)] = (x*x + y*y) <= 1.0f; // Inside unit circle
-        }
-    }
-    
-    // Initialize and run the membrane simulation
-    std::cout << "Initializing membrane with grid size: " << gridSize_ << "x" << gridSize_ << std::endl;
-    membrane_.setInitialCondition();
-    membrane_.Simulate();
-    std::cout << "Membrane simulation completed" << std::endl;
-}
-
-// Reads a text file and outputs a string with everything in the text file
-std::string DrumRenderer::getShaderContents(const char* filename)
+void DrumRenderer::compileErrors(unsigned int shader, const char* type)
 {
-	std::ifstream in(filename);
-	if (in)
+    GLint hasCompiled;
+    char infoLog[1024];
+
+    if (type != std::string("PROGRAM"))
+    {
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
+        if (hasCompiled == GL_FALSE)
+        {
+            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+            std::cout << "SHADER_COMPILATION_ERROR for: " << type << "\n" << infoLog << std::endl;
+        }
+    }
+    else
+    {
+        glGetProgramiv(shader, GL_LINK_STATUS, &hasCompiled);
+        if (hasCompiled == GL_FALSE)
+        {
+            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+            std::cout << "SHADER_LINKING_ERROR for: " << type << "\n" << infoLog << std::endl;
+        }
+    }
+}
+
+// Shader activation and deletion
+void DrumRenderer::activateShaderProgram()
+{
+    glUseProgram(shaderProgramID);
+}
+
+void DrumRenderer::deleteShaderProgram()
+{
+    if (shaderProgramID != 0)
+    {
+        glDeleteProgram(shaderProgramID);
+        shaderProgramID = 0;
+    }
+}
+
+GLuint DrumRenderer::getShaderProgramID() const
+{
+    return shaderProgramID;
+}
+
+void DrumRenderer::compileErrors(unsigned int shader, const char* type){
+	// Stores status of compilation
+	GLint hasCompiled;
+	// Character array to store error message in
+	char infoLog[1024];
+	if (type != "PROGRAM")
 	{
-		std::string contents;
-		in.seekg(0, std::ios::end);
-		contents.resize(in.tellg());
-		in.seekg(0, std::ios::beg);
-		in.read(&contents[0], contents.size());
-		in.close();
-		return(contents);
-	}
-	throw(errno);
-}
-
-void DrumRendere::buildMesh(){
-	for(int i = 0; i < GRID_X; i++){
-		for (int j = 0; j < GRID_Y; j++){
-			float x = (float)j / (GRID_X - 1) * 2.0f - 1.0f; 
-			float z = (float)i / (GRID_Y - 1) * 2.0f - 1.0f;
-			float y = 0.0f; 
-
-			// position
-			vertices_.push_back(x);
-			vertices_.push_back(y);
-			vertices_.push_back(z);
-			// color
-			vertices_.push_back(0.0f);
-			vertices_.push_back(0.0f);
-			vertices_.push_back(0.0f);
-			// TexCoord
-			vertices_.push_back((float)j / (GRID_Y - 1));
-			vertices_.push_back((float)i / (GRID_X - 1));
-			// normal
-			vertices_.push_back(0.0f);
-			vertices_.push_back(1.0f);
-			vertices_.push_back(0.0f);
+		glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
+		if (hasCompiled == GL_FALSE)
+		{
+			glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+			std::cout << "SHADER_COMPILATION_ERROR for:" << type << "\n" << infoLog << std::endl;
 		}
 	}
-
-	// Generate indices_
-	for (int i = 0; i < GRID_X - 1; i++) {
-		for (int j = 0; j < GRID_Y - 1; j++) {
-			int topLeft     = i * GRID_X + j;
-			int topRight    = i * GRID_X + j + 1;
-			int bottomLeft  = (i + 1) * GRID_X + j;
-			int bottomRight = (i + 1) * GRID_X + j + 1;
-
-			// triangle 1
-			indices_.push_back(topLeft);
-			indices_.push_back(bottomLeft);
-			indices_.push_back(topRight);
-			// triangle 2
-			indices_.push_back(topRight);
-			indices_.push_back(bottomLeft);
-			indices_.push_back(bottomRight);
+	else
+	{
+		glGetProgramiv(shader, GL_LINK_STATUS, &hasCompiled);
+		if (hasCompiled == GL_FALSE)
+		{
+			glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+			std::cout << "SHADER_LINKING_ERROR for:" << type << "\n" << infoLog << std::endl;
 		}
 	}
-};
-void DrumRenderer::updateMeshDeformation(){
-    // Scale factor for displacement visualization
-    const float SCALE = 0.2f;
-    
-    const auto& grid = membrane_.getCurrentGrid();
-    
-    // Update vertex positions based on membrane grid
-    for (int ii = 0; ii < gridSize_; ii++){
-        for (int jj = 0; jj < gridSize_; jj++){
-            int idx = idx_(ii, jj);
-            if (inside_[idx]) {
-                int vertexBase = idx * 6;
-                // Update z with displacement from membrane
-                vertices__[vertexBase + 2] = grid[idx] * SCALE;
-            }
-        }
-    }
-    
-    // Recalculate normals based on surface deformation
-    float span = 2.0f;
-    float dx = span / (gridSize_ - 1);
-    
-    for (int ii = 1; ii < gridSize_ - 1; ii++){
-        for (int jj = 1; jj < gridSize_ - 1; jj++){
-            int idx = idx_(ii, jj);
-            if (inside_[idx]) {
-                // Calculate normal using finite differences
-                float dz_dx = (vertices__[idx_(ii+1, jj) * 6 + 2] - vertices__[idx_(ii-1, jj) * 6 + 2]) / (2.0f * dx);
-                float dz_dy = (vertices__[idx_(ii, jj+1) * 6 + 2] - vertices__[idx_(ii, jj-1) * 6 + 2]) / (2.0f * dx);
-                
-                // Normal is (-dz/dx, -dz/dy, 1)
-                float nx = -dz_dx;
-                float ny = -dz_dy;
-                float nz = 1.0f;
-                
-                float len = sqrt(nx*nx + ny*ny + nz*nz);
-                if (len > 0.001f) {
-                    nx /= len;
-                    ny /= len;
-                    nz /= len;
-                }
-                
-                int vertexBase = idx * 6;
-                vertices__[vertexBase + 3] = nx;
-                vertices__[vertexBase + 4] = ny;
-                vertices__[vertexBase + 5] = nz;
-            }
-        }
-    }
-    
-    // Update VBO with new vertex data
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, vertices__.size() * sizeof(float), vertices__.data());
 }
 
-void DrumRenderer::render(){
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glViewport(0, 0, width_, height_);
+// Buffer creation
+void Renderer::createBuffers(GLfloat* vertexData, GLsizeiptr vertexSize, GLuint* indexData, GLsizeiptr indexSize)
+{
+    // Create VAO
+    glGenVertexArrays(1, &VAO_ID);
+    bindVertexArray();
 
-    glUseProgram(shaderProgram);
+    // Create VBO
+    glGenBuffers(1, &VBO_ID);
+    bindVBO();
+    glBufferData(GL_ARRAY_BUFFER, vertexSize, vertexData, GL_DYNAMIC_DRAW);
 
-    // Update mesh deformation from current membrane state
-    updateMeshDeformation();
+    // Create EBO
+    glGenBuffers(1, &EBO_ID);
+    bindEBO();
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize, indexData, GL_STATIC_DRAW);
 
-    // Simple orthographic projection
-    float aspect = (float)width_ / (float)height_;
-    float scale = 0.7f;
-    float mvp[16] = {
-        scale/aspect, 0,     0,       0,
-        0,            scale, 0,       0,
-        0,            0,     -0.01f,  0,
-        0,            0,     -1.5f,   1
-    };
+    unbindVBO();
+    unbindVertexArray();
+}
 
-    glUniformMatrix4fv(uMVP, 1, GL_FALSE, mvp);
+// Setup vertex attributes
+void Renderer::setupVertexAttributes()
+{
+    bindVertexArray();
+    bindVBO();
 
+    // Position attribute (layout 0)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Color attribute (layout 1)
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // TexCoord attribute (layout 2)
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    // Normal attribute (layout 3)
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(8 * sizeof(float)));
+    glEnableVertexAttribArray(3);
+
+    unbindVBO();
+    unbindVertexArray();
+}
+
+// Bind and unbind buffer methods
+void Renderer::bindVertexArray()
+{
     glBindVertexArray(vao);
-    if (indices__.size() > 0) {
-        // Draw as wireframe to debug
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glDrawElements(GL_TRIANGLES, indices__.size(), GL_UNSIGNED_INT, 0);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    } else {
-        std::cerr << "ERROR: No indices_ to draw!" << std::endl;
-    }
-    glBindVertexArray(0);
-    
-    frameCount_++;
 }
 
-void DrumRenderer::cleanup(){
-    glDeleteBuffers(1, &vbo);
-    glDeleteBuffers(1, &ebo);
-    glDeleteVertexArrays(1, &vao);
-    glDeleteProgram(shaderProgram);
+void Renderer::unbindVertexArray()
+{
+    glBindVertexArray(0);
+}
+
+void Renderer::bindVBO()
+{
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+}
+
+void Renderer::unbindVBO()
+{
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void Renderer::bindEBO()
+{
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+}
+
+void Renderer::unbindEBO()
+{
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
