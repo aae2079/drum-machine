@@ -60,8 +60,8 @@ class DrumRenderer{
         GLFWwindow* getWindow() const;
         int getWindowWidth() const;
         int getWindowHeight() const;
-        const std::vector<GLfloat>& getVertices() const;
-        const std::vector<GLuint>& getIndices() const;       
+        std::vector<GLfloat>& getVertices();
+        std::vector<GLuint>& getIndices();       
 
     private:
         GLFWwindow *window;
@@ -72,7 +72,7 @@ class DrumRenderer{
         void buildMesh();
         
         GLuint vao, vbo, ebo;
-        GLuint shaderProgram;
+        GLuint shaderProgramID;
 
         //meshData
         std::vector<GLfloat> vertices_;

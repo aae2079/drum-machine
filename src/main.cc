@@ -11,6 +11,7 @@
 #include "EBO.hpp"
 #include "shaderClass.hpp"
 #include "RectangularMembrane.hpp"
+#include "drumRenderer.hpp"
 
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
@@ -84,55 +85,36 @@ void initShape(void){
 
 
 int main(void) {
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return -1;
-    }
+	// std::string input;
+    // float sim_time = 2.0f;
+    // int num_samples = sim_time * SAMPLE_RATE;
 
-	std::string input;
-    float sim_time = 2.0f;
-    int num_samples = sim_time * SAMPLE_RATE;
+   	DrumRenderer drumGui(WIDTH,HEIGHT,"Drum Machine");
+   	if(!drumGui.init()){
+		std::cerr << "Failed to initialize Drum Machine" << std::endl;
+   	}
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+   	drumGui.compileShaders("default.vert","default.frag");
 
-
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Drum Machine", NULL, NULL);
-    if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-
-    glfwMakeContextCurrent(window);
-    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-
-    glViewport(0,0, WIDTH, HEIGHT);
-
-    //patch y
-	initShape();
-    // Generates Shader object using shaders default.vert and default.frag
-	Shader shaderProgram("default.vert", "default.frag");
-
+   	drumGui.createBuffers(drumGui.getVertices().data(), drumGui.getVertices().size(), drumGui.getIndices().data(),drumGui.getIndices().size());
 	// Generates Vertex Array Object and binds it
-	VAO VAO1;
-	VAO1.Bind();
-	// Generates Vertex Buffer Object and links it to vertices
-	VBO VBO1(vertices.data(), vertices.size() * sizeof(GLfloat));
-	// Generates Element Buffer Object and links it to indices
-	EBO EBO1(indices.data(), indices.size() * sizeof(GLuint));
-	// Links VBO attributes such as coordinates and colors to VAO
-	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
-	VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 11 * sizeof(float), (void*)(3 * sizeof(float)));
-	VAO1.LinkAttrib(VBO1, 2, 2, GL_FLOAT, 11 * sizeof(float), (void*)(6 * sizeof(float)));
-	VAO1.LinkAttrib(VBO1, 3, 3, GL_FLOAT, 11 * sizeof(float), (void*)(8 * sizeof(float)));
-	// Unbind all to prevent accidentally modifying them
-	VAO1.Unbind();
-	VBO1.Unbind();
-	EBO1.Unbind();
+	// VAO VAO1;
+	// VAO1.Bind();
+	// // Generates Vertex Buffer Object and links it to vertices
+	// VBO VBO1(vertices.data(), vertices.size() * sizeof(GLfloat));
+	// // Generates Element Buffer Object and links it to indices
+	// EBO EBO1(indices.data(), indices.size() * sizeof(GLuint));
+	// // Links VBO attributes such as coordinates and colors to VAO
+	// VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
+	// VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 11 * sizeof(float), (void*)(3 * sizeof(float)));
+	// VAO1.LinkAttrib(VBO1, 2, 2, GL_FLOAT, 11 * sizeof(float), (void*)(6 * sizeof(float)));
+	// VAO1.LinkAttrib(VBO1, 3, 3, GL_FLOAT, 11 * sizeof(float), (void*)(8 * sizeof(float)));
+	// // Unbind all to prevent accidentally modifying them
+	// VAO1.Unbind();
+	// VBO1.Unbind();
+	// EBO1.Unbind();
 
+	drumGui.setupVertexAttributes();
     // Gets ID of uniform called "scale"
 	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
 
@@ -160,16 +142,16 @@ int main(void) {
 				auto end = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double, std::milli> duration = end - start;
 				
-				for (int i = 0; i < GRID_X; i++) {
-            		for (int j = 0; j < GRID_Y; j++) {
-                		int vertexStart = (i * GRID_X + j) * 11;
-                		vertices[vertexStart + 1] = membrane.getCurrentGrid()[j + i * GRID_X];
-            		}
-        		}
-				glBindBuffer(GL_ARRAY_BUFFER, VBO1.ID);
-				glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(GLfloat), vertices.data());
-
-
+				// for (int i = 0; i < GRID_X; i++) {
+            	// 	for (int j = 0; j < GRID_Y; j++) {
+                // 		int vertexStart = (i * GRID_X + j) * 11;
+                // 		vertices[vertexStart + 1] = membrane.getCurrentGrid()[j + i * GRID_X];
+            	// 	}
+        		// }
+				// glBindBuffer(GL_ARRAY_BUFFER, VBO1.ID);
+				// glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(GLfloat), vertices.data());
+				drumGui.updateVertexData(membrane.getCurrentGrid());
+				
 				// Specify the color of the background
 				glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 				// Clean the back buffer and depth buffer

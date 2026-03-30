@@ -39,7 +39,7 @@ bool DrumRenderer::init(){
     return true;
 }
 
-void buildMesh(){
+void DrumRenderer::buildMesh(){
     for(int i = 0; i < GRID_X; i++){
 		for (int j = 0; j < GRID_Y; j++){
 			float x = (float)j / (GRID_X - 1) * 2.0f - 1.0f; 
@@ -47,20 +47,20 @@ void buildMesh(){
 			float y = 0.0f; 
 
 			// position
-			vertices.push_back(x);
-			vertices.push_back(y);
-			vertices.push_back(z);
+			vertices_.push_back(x);
+			vertices_.push_back(y);
+			vertices_.push_back(z);
 			// color
-			vertices.push_back(0.0f);
-			vertices.push_back(0.0f);
-			vertices.push_back(0.0f);
+			vertices_.push_back(0.0f);
+			vertices_.push_back(0.0f);
+			vertices_.push_back(0.0f);
 			// TexCoord
-			vertices.push_back((float)j / (GRID_Y - 1));
-			vertices.push_back((float)i / (GRID_X - 1));
+			vertices_.push_back((float)j / (GRID_Y - 1));
+			vertices_.push_back((float)i / (GRID_X - 1));
 			// normal
-			vertices.push_back(0.0f);
-			vertices.push_back(1.0f);
-			vertices.push_back(0.0f);
+			vertices_.push_back(0.0f);
+			vertices_.push_back(1.0f);
+			vertices_.push_back(0.0f);
 		}
 	}
 
@@ -73,18 +73,18 @@ void buildMesh(){
 			int bottomRight = (i + 1) * GRID_X + j + 1;
 
 			// triangle 1
-			indices.push_back(topLeft);
-			indices.push_back(bottomLeft);
-			indices.push_back(topRight);
+			indices_.push_back(topLeft);
+			indices_.push_back(bottomLeft);
+			indices_.push_back(topRight);
 			// triangle 2
-			indices.push_back(topRight);
-			indices.push_back(bottomLeft);
-			indices.push_back(bottomRight);
+			indices_.push_back(topRight);
+			indices_.push_back(bottomLeft);
+			indices_.push_back(bottomRight);
 		}
 	}
 
-    createBuffers(vertices.data(), vertices.size() * sizeof(GLfloat),
-                  indices.data(), indices.size() * sizeof(GLuint));
+    createBuffers(vertices_.data(), vertices_.size() * sizeof(GLfloat),
+                  indices_.data(), indices_.size() * sizeof(GLuint));
     setupVertexAttributes();
 }
 
@@ -206,20 +206,33 @@ void DrumRenderer::compileErrors(unsigned int shader, const char* type){
 	}
 }
 
+void Renderer::updateVertexData(const std::vector<GLfloat>& vertexData)
+{
+			for (int i = 0; i < GRID_X; i++) {
+            		for (int j = 0; j < GRID_Y; j++) {
+                		int vertexStart = (i * GRID_X + j) * 11;
+                		vertices[vertexStart + 1] = membrane.getCurrentGrid()[j + i * GRID_X];
+            		}
+        		}
+    bindVBO();
+    glBufferSubData(GL_ARRAY_BUFFER, 0, vertexData.size() * sizeof(GLfloat), vertexData.data());
+    unbindVBO();
+}
+
 // Buffer creation
-void Renderer::createBuffers(GLfloat* vertexData, GLsizeiptr vertexSize, GLuint* indexData, GLsizeiptr indexSize)
+void DrumRenderer::createBuffers(GLfloat* vertexData, GLsizeiptr vertexSize, GLuint* indexData, GLsizeiptr indexSize)
 {
     // Create VAO
-    glGenVertexArrays(1, &VAO_ID);
+    glGenVertexArrays(1, &vao);
     bindVertexArray();
 
     // Create VBO
-    glGenBuffers(1, &VBO_ID);
+    glGenBuffers(1, &vbo);
     bindVBO();
     glBufferData(GL_ARRAY_BUFFER, vertexSize, vertexData, GL_DYNAMIC_DRAW);
 
     // Create EBO
-    glGenBuffers(1, &EBO_ID);
+    glGenBuffers(1, &ebo);
     bindEBO();
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize, indexData, GL_STATIC_DRAW);
 
@@ -228,7 +241,7 @@ void Renderer::createBuffers(GLfloat* vertexData, GLsizeiptr vertexSize, GLuint*
 }
 
 // Setup vertex attributes
-void Renderer::setupVertexAttributes()
+void DrumRenderer::setupVertexAttributes()
 {
     bindVertexArray();
     bindVBO();
@@ -254,32 +267,43 @@ void Renderer::setupVertexAttributes()
 }
 
 // Bind and unbind buffer methods
-void Renderer::bindVertexArray()
+void DrumRenderer::bindVertexArray()
 {
     glBindVertexArray(vao);
 }
 
-void Renderer::unbindVertexArray()
+void DrumRenderer::unbindVertexArray()
 {
     glBindVertexArray(0);
 }
 
-void Renderer::bindVBO()
+void DrumRenderer::bindVBO()
 {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 }
 
-void Renderer::unbindVBO()
+void DrumRenderer::unbindVBO()
 {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Renderer::bindEBO()
+void DrumRenderer::bindEBO()
 {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 }
 
-void Renderer::unbindEBO()
+void DrumRenderer::unbindEBO()
 {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
+
+std::vector<GLfloat>& DrumRenderer::getVertices()
+{
+    return vertices_;
+}
+
+std::vector<GLuint>& DrumRenderer::getIndices()
+{
+    return indices_;
+}
+
