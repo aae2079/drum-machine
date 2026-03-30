@@ -74,9 +74,9 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the F
 
 ### Task 3.1: Choose and Integrate GUI Library
 - [x] Install GLFW and GLAD
-- [ ] Link libraries in build system
-- [ ] Create basic window (512x512 or 800x600)
-- [ ] Set up render loop at 60 FPS
+- [x] Link libraries in build system
+- [x] Create basic window (512x512 or 800x600)
+- [x] Set up render loop at 60 FPS
 
 ### Task 3.2: Render Membrane Visualization
 - [ ] Map displacement values to colors:
@@ -84,10 +84,10 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the F
   - Zero displacement → Gray/White
   - Positive displacement → Red
   - Use color gradient for smooth visualization
-- [ ] Create `Renderer` class with `renderMembrane()` method
-- [ ] Map grid coordinates to screen pixels
-- [ ] Update texture/surface each frame
-- [ ] Add FPS counter display
+- [x] Create `Renderer` class with `renderMembrane()` method
+- [x] Map grid coordinates to screen pixels
+- [x] Update texture/surface each frame
+- [x] Add FPS counter display
 
 ### Task 3.3: Real-time Simulation Loop
 - [ ] Decouple physics timestep from render framerate
@@ -104,8 +104,8 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the F
       limitFramerate(60);
   }
   ```
-- [ ] Add pause/resume capability (Space key)
-- [ ] Visual confirmation of wave propagation
+- [x] Add pause/resume capability (Space key)
+- [x] Visual confirmation of wave propagation
 
 **Deliverable**: Window showing animated membrane with hard-coded strike
 
