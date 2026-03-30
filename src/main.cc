@@ -2,10 +2,6 @@
 #include <vector>
 #include <chrono>
 #include "simDefs.hpp"
-// #include "VAO.hpp"
-// #include "VBO.hpp"
-// #include "EBO.hpp"
-// #include "shaderClass.hpp"
 #include "RectangularMembrane.hpp"
 #include "drumRenderer.hpp"
 
