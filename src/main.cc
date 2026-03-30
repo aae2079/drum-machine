@@ -20,7 +20,7 @@ int main(void) {
    	drumGui.compileShaders("default.vert","default.frag");
 	drumGui.setupVertexAttributes();
 
-    // Variables that help the rotation of the pyramid
+    // Variables that help the rotation of the grid
 	float rotation = -30.0f;
     float tilt = 15.0f;
 	drumGui.enableDepthTest();
