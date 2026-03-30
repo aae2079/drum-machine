@@ -5,10 +5,18 @@
 
 using namespace std;
 
-DrumRenderer::DrumRenderer(uint64_t wWidth, uint64_t wHeight, const char* windowTitle)
-        : WIDTH(wWidth), HEIGHT(wHeight){
+DrumRenderer::DrumRenderer(uint32_t wWidth, uint32_t wHeight, const char* windowTitle)
+        : WIDTH(wWidth), HEIGHT(wHeight), windowTitle(windowTitle), window(nullptr), vao(0), vbo(0), ebo(0), shaderProgramID(0),
+		  gridX(GRID_X), gridY(GRID_Y) {
+}
 
-
+DrumRenderer::~DrumRenderer() {
+	deleteBuffers();
+	deleteShaderProgram();
+	if (window) {
+		glfwDestroyWindow(window);
+	}
+	glfwTerminate();
 }
 
 bool DrumRenderer::init(){
@@ -40,10 +48,10 @@ bool DrumRenderer::init(){
 }
 
 void DrumRenderer::buildMesh(){
-    for(int i = 0; i < GRID_X; i++){
-		for (int j = 0; j < GRID_Y; j++){
-			float x = (float)j / (GRID_X - 1) * 2.0f - 1.0f; 
-			float z = (float)i / (GRID_Y - 1) * 2.0f - 1.0f;
+    for(int i = 0; i < gridX; i++){
+		for (int j = 0; j < gridY; j++){
+			float x = (float)j / (gridX - 1) * 2.0f - 1.0f; 
+			float z = (float)i / (gridY - 1) * 2.0f - 1.0f;
 			float y = 0.0f; 
 
 			// position
@@ -55,8 +63,8 @@ void DrumRenderer::buildMesh(){
 			vertices_.push_back(0.0f);
 			vertices_.push_back(0.0f);
 			// TexCoord
-			vertices_.push_back((float)j / (GRID_Y - 1));
-			vertices_.push_back((float)i / (GRID_X - 1));
+			vertices_.push_back((float)j / (gridY - 1));
+			vertices_.push_back((float)i / (gridX - 1));
 			// normal
 			vertices_.push_back(0.0f);
 			vertices_.push_back(1.0f);
@@ -65,12 +73,12 @@ void DrumRenderer::buildMesh(){
 	}
 
 	// Generate indices
-	for (int i = 0; i < GRID_X - 1; i++) {
-		for (int j = 0; j < GRID_Y - 1; j++) {
-			int topLeft     = i * GRID_X + j;
-			int topRight    = i * GRID_X + j + 1;
-			int bottomLeft  = (i + 1) * GRID_X + j;
-			int bottomRight = (i + 1) * GRID_X + j + 1;
+	for (int i = 0; i < gridX - 1; i++) {
+		for (int j = 0; j < gridY - 1; j++) {
+			int topLeft     = i * gridX + j;
+			int topRight    = i * gridX + j + 1;
+			int bottomLeft  = (i + 1) * gridX + j;
+			int bottomRight = (i + 1) * gridX + j + 1;
 
 			// triangle 1
 			indices_.push_back(topLeft);
@@ -122,18 +130,34 @@ void DrumRenderer::compileShaders(const char *vertexFile, const char *fragmentFi
 	compileErrors(fragmentShader, "FRAGMENT");
 
 	// Create Shader Program Object and get its reference
-	ID = glCreateProgram();
+	shaderProgramID = glCreateProgram();
 	// Attach the Vertex and Fragment Shaders to the Shader Program
-	glAttachShader(ID, vertexShader);
-	glAttachShader(ID, fragmentShader);
+	glAttachShader(shaderProgramID, vertexShader);
+	glAttachShader(shaderProgramID, fragmentShader);
 	// Wrap-up/Link all the shaders together into the Shader Program
-	glLinkProgram(ID);
+	glLinkProgram(shaderProgramID);
 	// Checks if Shaders linked succesfully
-	compileErrors(ID, "PROGRAM");
+	compileErrors(shaderProgramID, "PROGRAM");
 
 	// Delete the now useless Vertex and Fragment Shader objects
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
+}
+
+std::string DrumRenderer::getShaderContents(const char* filename)
+{
+	std::ifstream in(filename);
+	if (in)
+	{
+		std::string contents;
+		in.seekg(0, std::ios::end);
+		contents.resize(in.tellg());
+		in.seekg(0, std::ios::beg);
+		in.read(&contents[0], contents.size());
+		in.close();
+		return(contents);
+	}
+	throw(errno);
 }
 
 void DrumRenderer::compileErrors(unsigned int shader, const char* type)
@@ -167,56 +191,34 @@ void DrumRenderer::activateShaderProgram()
     glUseProgram(shaderProgramID);
 }
 
-void DrumRenderer::deleteShaderProgram()
-{
-    if (shaderProgramID != 0)
-    {
-        glDeleteProgram(shaderProgramID);
-        shaderProgramID = 0;
-    }
-}
-
 GLuint DrumRenderer::getShaderProgramID() const
 {
     return shaderProgramID;
 }
 
-void DrumRenderer::compileErrors(unsigned int shader, const char* type){
-	// Stores status of compilation
-	GLint hasCompiled;
-	// Character array to store error message in
-	char infoLog[1024];
-	if (type != "PROGRAM")
-	{
-		glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
-		if (hasCompiled == GL_FALSE)
-		{
-			glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-			std::cout << "SHADER_COMPILATION_ERROR for:" << type << "\n" << infoLog << std::endl;
+
+void DrumRenderer::updateVertexData(const std::vector<GLfloat>& gridData)
+{
+	for (int i = 0; i < gridX; i++) {
+		for (int j = 0; j < gridY; j++) {
+			int vertexStart = (i * gridX + j) * 11;
+			vertices_[vertexStart + 1] = gridData[j + i * gridX];
 		}
 	}
-	else
-	{
-		glGetProgramiv(shader, GL_LINK_STATUS, &hasCompiled);
-		if (hasCompiled == GL_FALSE)
-		{
-			glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-			std::cout << "SHADER_LINKING_ERROR for:" << type << "\n" << infoLog << std::endl;
-		}
-	}
+    bindVBO();
+    glBufferSubData(GL_ARRAY_BUFFER, 0, vertices_.size() * sizeof(GLfloat), vertices_.data());
+    unbindVBO();
 }
 
-void Renderer::updateVertexData(const std::vector<GLfloat>& vertexData)
+void DrumRenderer::setMatrices(const glm::mat4& model, const glm::mat4& view,const glm::mat4& proj)
 {
-			for (int i = 0; i < GRID_X; i++) {
-            		for (int j = 0; j < GRID_Y; j++) {
-                		int vertexStart = (i * GRID_X + j) * 11;
-                		vertices[vertexStart + 1] = membrane.getCurrentGrid()[j + i * GRID_X];
-            		}
-        		}
-    bindVBO();
-    glBufferSubData(GL_ARRAY_BUFFER, 0, vertexData.size() * sizeof(GLfloat), vertexData.data());
-    unbindVBO();
+		int modelLoc = glGetUniformLocation(shaderProgramID, "model");
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		int viewLoc = glGetUniformLocation(shaderProgramID, "view");
+		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+		int projLoc = glGetUniformLocation(shaderProgramID, "proj");
+		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
+
 }
 
 // Buffer creation
@@ -229,12 +231,12 @@ void DrumRenderer::createBuffers(GLfloat* vertexData, GLsizeiptr vertexSize, GLu
     // Create VBO
     glGenBuffers(1, &vbo);
     bindVBO();
-    glBufferData(GL_ARRAY_BUFFER, vertexSize, vertexData, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices_.size() * sizeof(GLfloat), vertices_.data(), GL_DYNAMIC_DRAW);
 
     // Create EBO
     glGenBuffers(1, &ebo);
     bindEBO();
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize, indexData, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_.size() * sizeof(GLuint), indices_.data(), GL_STATIC_DRAW);
 
     unbindVBO();
     unbindVertexArray();
@@ -295,6 +297,83 @@ void DrumRenderer::bindEBO()
 void DrumRenderer::unbindEBO()
 {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+// Uniform setters
+void DrumRenderer::setUniform1f(const char* uniformName, float value)
+{
+    GLint loc = glGetUniformLocation(shaderProgramID, uniformName);
+    glUniform1f(loc, value);
+}
+
+void DrumRenderer::drawElements(){
+	bindVertexArray();
+	glDrawElements(GL_TRIANGLES, indices_.size(), GL_UNSIGNED_INT, 0);
+}
+
+void DrumRenderer::enableDepthTest()
+{
+    glEnable(GL_DEPTH_TEST);
+}
+
+void DrumRenderer::enableBlending()
+{
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+void DrumRenderer::setPolygonMode(GLenum face, GLenum mode)
+{
+    glPolygonMode(face, mode);
+}
+
+void DrumRenderer::deleteBuffers(){
+	if (vao != 0) {
+		glDeleteVertexArrays(1, &vao);
+		vao = 0;
+	}
+	if (vbo != 0) {
+		glDeleteBuffers(1, &vbo);
+		vbo = 0;
+	}
+	if (ebo != 0) {
+		glDeleteBuffers(1, &ebo);
+		ebo = 0;
+	}
+}
+
+void DrumRenderer::deleteShaderProgram()
+{
+	if (shaderProgramID != 0)
+	{
+		glDeleteProgram(shaderProgramID);
+		shaderProgramID = 0;
+	}
+}
+
+void DrumRenderer::pollEvents()
+{
+	glfwPollEvents();
+}
+
+void DrumRenderer::setClearColor(float r, float g, float b, float a)
+{
+	glClearColor(r, g, b, a);
+}
+
+void DrumRenderer::clear()
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void DrumRenderer::swapBuffers()
+{
+	glfwSwapBuffers(window);
+}
+
+GLFWwindow* DrumRenderer::getWindow() const
+{
+	return window;
 }
 
 std::vector<GLfloat>& DrumRenderer::getVertices()

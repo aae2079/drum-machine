@@ -31,15 +31,11 @@ pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 # Add source files
 set(SOURCES
     src/main.cc
+    src/frontend/drumRenderer.cc
     #src/CircularMembrane.cpp
     src/backend/RectangularMembrane.cc
     src/backend/audioEngine.cc
-    src/frontend/VAO.cpp
-    src/frontend/VBO.cpp
-    src/frontend/EBO.cpp
-    src/frontend/shaderClass.cpp
     src/3rdparty/glad.c
-    #src/drum_renderer.cpp
 )
 
 set(HEADERS
@@ -48,11 +44,7 @@ set(HEADERS
     include/Surface.hpp
     include/audioDefs.hpp
     include/strikeDefs.hpp
-    include/VBO.hpp
-    include/VAO.hpp
-    include/EBO.hpp
-    include/shaderClass.hpp
-    #include/drum_renderer.h
+    include/drumRenderer.hpp
     dependencies/glad/glad.h
     dependencies/KHR/khrplatform.h
     #/usr/include/portaudio.h

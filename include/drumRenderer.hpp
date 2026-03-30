@@ -1,15 +1,18 @@
 #ifndef DRUM_RENDERER_HPP
 #define DRUM_RENDERER_HPP
 
-#include "RectangularMembrane.hpp"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <string>
 #include <vector>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <cerrno>
+#include "simDefs.hpp"
 
 class DrumRenderer{
     public:
@@ -40,7 +43,7 @@ class DrumRenderer{
         // Rendering
         void setClearColor(float r, float g, float b, float a);
         void clear();
-        void drawElements(GLsizei indexCount);
+        void drawElements();
 
         // Render State
         void enableDepthTest();
@@ -48,9 +51,7 @@ class DrumRenderer{
         void setPolygonMode(GLenum face, GLenum mode);
 
         // Transform Matrices
-        void setModelMatrix(const glm::mat4& model);
-        void setViewMatrix(const glm::mat4& view);
-        void setProjectionMatrix(const glm::mat4& projection);
+        void setMatrices(const glm::mat4& model, const glm::mat4& view, const glm::mat4& proj);
 
         // Uniform Setters
         void setUniform1f(const char* uniformName, float value);
@@ -76,7 +77,7 @@ class DrumRenderer{
 
         //meshData
         std::vector<GLfloat> vertices_;
-        std::vector<GLfloat> indices_;
+        std::vector<GLuint> indices_;
         int gridX;
         int gridY;
         
