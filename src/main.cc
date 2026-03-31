@@ -4,6 +4,7 @@
 #include "simDefs.hpp"
 #include "RectangularMembrane.hpp"
 #include "drumRenderer.hpp"
+#include "audioEngine.hpp"
 
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
@@ -13,6 +14,11 @@ int main(void) {
     float sim_time = 2.0f;
     int num_samples = sim_time * SAMPLE_RATE;
 
+	// Initialize audio engine
+	AudioEngine audio;
+	audio.start();
+
+	// Initialize rendering engine
    	DrumRenderer drumGui(WIDTH,HEIGHT,"Drum Machine");
    	if(!drumGui.init()){
 		std::cerr << "Failed to initialize Drum Machine" << std::endl;
@@ -62,6 +68,8 @@ int main(void) {
 				continue;
 			}
 			membrane.Simulate();
+			audio.pushChunk(membrane.getAudioBuffer().data(), membrane.getAudioBuffer().size());
+			audio.delay();
 			sampsProc += BUFFER_SIZE;
 		}
 			
