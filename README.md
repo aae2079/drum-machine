@@ -58,6 +58,7 @@ drum-machine/
 - OpenMP library available
 - pkg-config utility
 
+
 **macOS**:
 ```bash
 brew install cmake glfw portaudio glm
@@ -68,16 +69,21 @@ brew install cmake glfw portaudio glm
 sudo apt-get install cmake libglfw3-dev portaudio19-dev libglm-dev
 ```
 
+**Clone Repo**:
+```bash
+git clone https://github.com/aae2079/drum-machine.git
+```
+
 ### Build
 
 ```bash
-cd drum-machine
+cd drum-machine/
 ./clean_build.sh
 ```
 
 Or manually:
 ```bash
-cd drum-machine/build
+cd build/
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build .
 ```
@@ -85,7 +91,7 @@ cmake --build .
 ### Run
 
 ```bash
-cd build/bin
+cd build/bin/
 ./drum-machine
 ```
 
@@ -194,6 +200,7 @@ float c = 1.0;                // Wave speed (higher = higher pitch)
 - [ ] Circular membrane with polar coordinates
 - [ ] Multiple strike locations (mouse interaction)
 - [ ] Parameter GUI
+- [ ] Simulate Drum Shell
 
 ### Phase 3: Sound Design
 - [ ] Preset system (kick, tom, snare, hi-hat)
@@ -272,6 +279,7 @@ sudo apt-get install --reinstall libglfw3-dev
 - LearnOpenGL: https://learnopengl.com/ (Modern GL tutorials)
 - GLFW: https://www.glfw.org/
 - GLM: https://glm.g-truc.net/
+- OpenGL Course - Create 3D and 2D Graphics With C++: https://www.youtube.com/watch?v=45MIykWJ-C4&t=3828s&pp=ygUPb3BlbmdsIHR1dG9yaWFs
 
 ## License
 
