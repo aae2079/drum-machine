@@ -4,15 +4,7 @@
 RectangularMembrane::RectangularMembrane(int nx, int ny, float damp, float c, float time_step, float sim_time)
     : nx_(nx), ny_(ny), damp_(damp), c_(c), time_step_(time_step), sim_time_(sim_time) {
     // Constructor implementation
-}
-
-RectangularMembrane::RectangularMembrane() 
-
-
-    // comstructor  builds the grid and sets initla conditions 
-    : nx_(GRID_X), ny_(GRID_Y), damp_(10.0), c_(1.0), time_step_(1.0/SAMPLE_RATE), sim_time_(2.0) {
-    
-    // Instantiate grids
+        // Instantiate grids
     curr_ = std::vector<float>(nx_ * ny_, 0.0f);
     prev_ = std::vector<float>(nx_ * ny_, 0.0f);
     next_ = std::vector<float>(nx_ * ny_, 0.0f);
@@ -44,8 +36,6 @@ RectangularMembrane::RectangularMembrane()
     }
 
     setInitialCondition();
-
-
 }
 
 RectangularMembrane::~RectangularMembrane(){

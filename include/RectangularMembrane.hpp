@@ -16,8 +16,7 @@ using finite difference method to solve the wave equation.
 */
 class RectangularMembrane {
     public:
-        RectangularMembrane(int nx, int ny, float damp, float c, float time_step, float sim_time);
-        RectangularMembrane();
+        RectangularMembrane(int nx=GRID_X, int ny=GRID_Y, float damp = 10.0, float c = 1.0, float time_step = 1.0/SAMPLE_RATE, float sim_time = 1.0);
         void setInitialCondition();
         void Simulate();
         ~RectangularMembrane();
@@ -25,7 +24,7 @@ class RectangularMembrane {
         // Getters for visualization
         int getNx() const { return nx_; }
         int getNy() const { return ny_; }
-        const std::vector<float>& getCurrentGrid() const { return curr_; }
+        std::vector<float>& getCurrentGrid() { return curr_; }
         std::vector<float>& getAudioBuffer() { return audioBuf_; }
         
     private:

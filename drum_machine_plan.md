@@ -1,11 +1,10 @@
 # 2D Membrane Drum Machine - Complete Implementation Plan
 
-**Tech Stack**: C++ with SDL2 (or SFML) 
+**Tech Stack**: C++ with OpenGL (GLFW) and PortAudio
 
-**NOTE**: 11/22/25 - Original implentation of this plan was desgined by Claude AI
 
 ## Project Overview
-Build a physically-accurate drum machine by simulating a 2D membrane using the wave equation. The simulation will generate real audio from the membrane vibrations and provide an interactive GUI for user control.
+Build a physically-accurate drum machine by simulating a 2D membrane using the FDM numerical solution of the 2D wave equation. The simulation will generate real time audio from the membrane vibrations and provide an interactive GUI for user control.
 
 ---
 
@@ -14,58 +13,83 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the w
 ### Task 1.1: Project Setup
 - [x] Create directory structure: `src/`, `include/`, `lib/`, `build/`
 - [x] Set up build system (CMake recommended)
-- [ ] Create basic classes: `Membrane`, `WaveSimulator`
-- [ ] Initialize 2D grid (start with 128x128, adjustable later)
-- [ ] Use `std::vector<std::vector<double>>` for displacement (u), velocity (v), and previous displacement (u_old)
+- [x] Create basic classes: `Membrane`, `AudioEngine`, `DrumRenderer`
+- [x] Initialize 2D grid (start with 128x128, adjustable)
+- [x] Use `std::vector<double>` interlieved grid for displacement (u), velocity (v), and previous displacement (u_old)
 
 ### Task 1.2: Implement Finite Difference Solver
-- [ ] Implement explicit finite difference method:
+- [x] Implement explicit finite difference method:
   ```
   u_new[i][j] = 2*u[i][j] - u_old[i][j] + c²*dt²*Laplacian(u[i][j])
   ```
-- [ ] Calculate Laplacian (5-point stencil):
-  ```
-  Laplacian = (u[i+1][j] + u[i-1][j] + u[i][j+1] + u[i][j-1] - 4*u[i][j]) / (dx²)
-  ```
-- [ ] Implement fixed boundary conditions: `u = 0` at grid edges
-- [ ] Add damping factor: multiply by 0.995-0.999 each step
-- [ ] Ensure stability: verify `c*dt/dx < 1` (Courant-Friedrichs-Lewy condition)
+- [x] Implement fixed boundary conditions: `u = 0` at grid edges
+- [x] Add damping factor: multiply by 0.995-0.999 each step
+- [x] Ensure stability: verify `c*dt/dx < 1` (Courant-Friedrichs-Lewy condition)
 
 ### Task 1.3: Hard-coded Initial Excitation
-- [ ] Implement Gaussian bump: `u[i][j] = A * exp(-r²/(2σ²))` at center
+- [x] Implement Gaussian bump: `u[i][j] = A * exp(-r²/(2σ²))` at center
 - [ ] Or velocity impulse: set `v[i][j] = intensity` at strike point
-- [ ] Test with console output: print center displacement over time
-- [ ] Verify wave propagation with data file output
-- [ ] Create simple visualization script (Python/gnuplot) to verify physics
+- [x] Test with console output: print center displacement over time
+- [x] Verify wave propagation with data file output
+- [x] Create simple visualization script (Python/gnuplot) to verify physics
 
 **Deliverable**: Working wave equation solver with verifiable propagation
 
 ---
 
-## Phase 2: Basic GUI Setup (Week 2)
+## Phase 2: Audio Integration (Week 2)
 
-### Task 2.1: Choose and Integrate GUI Library
-- [ ] **Recommended**: Install SDL2 and SDL2_ttf
-  - Simple 2D rendering with `SDL_Renderer`
-  - Built-in audio support
-  - Cross-platform input handling
-- [ ] Alternative: SFML (more C++-friendly)
-- [ ] Link libraries in build system
-- [ ] Create basic window (512x512 or 800x600)
-- [ ] Set up render loop at 60 FPS
+### Task 2.1: Extract Audio from Simulation
+- [x] Choose sampling point(s) on membrane (center or average of region)
+- [x] Convert displacement to audio amplitude
+- [x] Accumulate samples at 44.1kHz in circular buffer
+- [x] Handle sample rate conversion if physics timestep ≠ audio sample period
+- [x] Normalize audio output to prevent clipping
 
-### Task 2.2: Render Membrane Visualization
+### Task 2.2: Implement Audio Output
+- [x] Or use PortAudio for more control
+- [x] Set up thread-safe audio buffer (lock-free ring buffer)
+- [x] Initialize audio device: 44.1kHz, 16-bit, mono or stereo
+- [x] Create CLI user control
+
+### Task 2.3: Synchronize Audio and Visual
+- [x] Ensure physics timestep produces exactly 44100 samples/sec
+- [x] Calculate required physics steps: `physicsStepsPerSecond = sampleRate`
+- [x] Verify no audio glitches or pops
+- [x] Add audio on/off toggle (M key for mute)
+- [x] Implement WAV file export for debugging
+
+### Task 2.4: Parameter Tuning for Drum-like Sound
+- [x] Tune wave speed `c` (affects pitch)
+- [x] Tune damping factor (affects decay time)
+- [x] Tune strike intensity and width
+- [x] Experiment with membrane size
+- [x] Test different sampling positions "mic placement"
+
+**Deliverable**: Audible drum sound
+
+---
+
+## Phase 3: Basic GUI Setup (Week 3)
+
+### Task 3.1: Choose and Integrate GUI Library
+- [x] Install GLFW and GLAD
+- [x] Link libraries in build system
+- [x] Create basic window (512x512 or 800x600)
+- [x] Set up render loop at 60 FPS
+
+### Task 3.2: Render Membrane Visualization
 - [ ] Map displacement values to colors:
   - Negative displacement → Blue
   - Zero displacement → Gray/White
   - Positive displacement → Red
   - Use color gradient for smooth visualization
-- [ ] Create `Renderer` class with `renderMembrane()` method
-- [ ] Map grid coordinates to screen pixels
-- [ ] Update texture/surface each frame
-- [ ] Add FPS counter display
+- [x] Create `Renderer` class with `renderMembrane()` method
+- [x] Map grid coordinates to screen pixels
+- [x] Update texture/surface each frame
+- [x] Add FPS counter display
 
-### Task 2.3: Real-time Simulation Loop
+### Task 3.3: Real-time Simulation Loop
 - [ ] Decouple physics timestep from render framerate
 - [ ] Physics: 10-50 substeps per render frame (tune for stability)
 - [ ] Implement game loop:
@@ -80,49 +104,10 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the w
       limitFramerate(60);
   }
   ```
-- [ ] Add pause/resume capability (Space key)
-- [ ] Visual confirmation of wave propagation
+- [x] Add pause/resume capability (Space key)
+- [x] Visual confirmation of wave propagation
 
 **Deliverable**: Window showing animated membrane with hard-coded strike
-
----
-
-## Phase 3: Audio Integration (Week 3)
-
-### Task 3.1: Extract Audio from Simulation
-- [ ] Choose sampling point(s) on membrane (center or average of region)
-- [ ] Convert displacement to audio amplitude
-- [ ] Accumulate samples at 44.1kHz in circular buffer
-- [ ] Handle sample rate conversion if physics timestep ≠ audio sample period
-- [ ] Normalize audio output to prevent clipping
-
-### Task 3.2: Implement Audio Output
-- [ ] Use SDL_Audio callback system:
-  ```cpp
-  void audioCallback(void* userdata, Uint8* stream, int len) {
-      // Fill stream with membrane samples
-  }
-  ```
-- [ ] Or use PortAudio for more control
-- [ ] Set up thread-safe audio buffer (lock-free ring buffer)
-- [ ] Initialize audio device: 44.1kHz, 16-bit, mono or stereo
-- [ ] Test with sine wave first to verify audio pipeline
-
-### Task 3.3: Synchronize Audio and Visual
-- [ ] Ensure physics timestep produces exactly 44100 samples/sec
-- [ ] Calculate required physics steps: `physicsStepsPerSecond = sampleRate`
-- [ ] Verify no audio glitches or pops
-- [ ] Add audio on/off toggle (M key for mute)
-- [ ] Implement WAV file export for debugging
-
-### Task 3.4: Parameter Tuning for Drum-like Sound
-- [ ] Tune wave speed `c` (affects pitch)
-- [ ] Tune damping factor (affects decay time)
-- [ ] Tune strike intensity and width
-- [ ] Experiment with membrane size
-- [ ] Test different sampling positions
-
-**Deliverable**: Audible drum sound synchronized with visual membrane
 
 ---
 
@@ -476,12 +461,5 @@ drum-machine/
 - "The Audio Programming Book" by Boulanger & Lazzarini
 
 ---
-
-## Notes
-- This plan is modular: you can stop at any MVP and have a working product
-- Phases 8-10 are optional enhancements
-- Adjust timeline based on your available time and experience level
-- Consider using Git branches for experimental features
-- Join communities: r/DSP, r/audioengineering, r/cpp for help
 
 Good luck with your drum machine! 🥁
