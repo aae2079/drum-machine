@@ -242,6 +242,7 @@ export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
 ```bash
 # macOS
 brew reinstall glfw
+brew link --force libomp #libomp may need relinking 
 
 # Linux
 sudo apt-get install --reinstall libglfw3-dev
