@@ -55,7 +55,7 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
-        vcpkg install opengl glfw3 portaudio glm --triplet x64-windows pkgconfig
+        vcpkg install pkgconf opengl glfw3 portaudio glm --triplet x64-windows
         vcpkg integrate install
     - name: Set reusable strings
       id: strings
