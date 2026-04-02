@@ -2,7 +2,7 @@ name: CMake on multiple platforms
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "19-build-pipeline-is-failing" ]
   pull_request:
     branches: [ "main" ]
 
