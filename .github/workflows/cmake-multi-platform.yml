@@ -51,7 +51,12 @@ jobs:
           libxi-dev \
           libomp-dev \
           pkg-config
-
+    - name: Install Windows dependencies
+      if: runner.os == 'Windows'
+      run: |
+        choco install -y glfw3
+        choco install -y glm
+        choco install -y portaudio
     - name: Set reusable strings
       id: strings
       shell: bash
