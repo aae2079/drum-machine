@@ -2,9 +2,7 @@ name: CMake on multiple platforms
 
 on:
   push:
-    branches: [ "19-build-pipeline-is-failing" ]
   pull_request:
-    branches: [ "main" ]
 
 jobs:
   build:
@@ -51,6 +49,7 @@ jobs:
           libxinerama-dev \
           libxcursor-dev \
           libxi-dev \
+          libomp-dev \
           pkg-config
 
     - name: Set reusable strings
