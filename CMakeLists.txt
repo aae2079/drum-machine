@@ -93,3 +93,42 @@ if(MSVC)
 else()
     target_compile_options(drum-machine PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# Testing
+enable_testing()
+
+set(TEST_SOURCES
+    test/rectangularMembraneUnitTest.cc
+    src/backend/RectangularMembrane.cc
+    src/backend/audioEngine.cc
+)
+
+add_executable(test_rectangular_membrane ${TEST_SOURCES})
+
+target_include_directories(test_rectangular_membrane
+    PRIVATE
+        include
+        dependencies
+        ${PORTAUDIO_INCLUDE_DIRS}
+)
+
+target_link_directories(test_rectangular_membrane PRIVATE ${PORTAUDIO_LIBRARY_DIRS})
+
+target_link_libraries(test_rectangular_membrane
+    PRIVATE
+        OpenGL::GL
+        glfw
+        OpenMP::OpenMP_CXX
+        ${PORTAUDIO_LIBRARIES}
+)
+
+target_compile_options(test_rectangular_membrane PRIVATE
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
+
+add_test(
+    NAME RectangularMembraneTest
+    COMMAND test_rectangular_membrane
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
