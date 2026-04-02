@@ -54,9 +54,11 @@ jobs:
     - name: Install Windows dependencies
       if: runner.os == 'Windows'
       run: |
-        choco install -y glfw3
-        choco install -y glm
-        choco install -y portaudio
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+        choco install glfw -y
+        choco install glm -y
+        vcpkg install opengl glfw3 portaudio glm --triplet x64-windows
+        vcpkg integrate install
     - name: Set reusable strings
       id: strings
       shell: bash
@@ -69,6 +71,7 @@ jobs:
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        ${{ runner.os == 'Windows' && '-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake' || '' }}
         -S ${{ github.workspace }}
 
     - name: Build
