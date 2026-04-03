@@ -26,12 +26,13 @@ void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &
 int main(int argc, char** argv){
 
     if (argc < 2){
-        std::cout << "Usage: " << argv[0] << " simulation time in seconds(float) ex: 2.0" << std::endl;
+        std::cout << "Usage: " << argv[0] << " simulation time in seconds(int) ex: 2" << std::endl;
         return -1;
     }
     std::string input;
-    float sim_time = (float)argv[1];
+    int sim_time = argv[1];
     int num_samples = sim_time * SAMPLE_RATE;
+    int sampsProc = 0;
 
     #if PORT_AUDIO
     AudioEngine audio;
