@@ -30,7 +30,7 @@ int main(int argc, char** argv){
         return -1;
     }
     std::string input;
-    int sim_time = argv[1];
+    int sim_time = std::stoi(argv[1]);
     int num_samples = sim_time * SAMPLE_RATE;
     int sampsProc = 0;
 
@@ -43,6 +43,7 @@ int main(int argc, char** argv){
     std::vector<float> audio_buffer;
     std::vector<int16_t> int16_buffer;
 
+    RectangularMembrane membrane;
     //Real-time mechanicism 
     while (sampsProc < num_samples) {
         auto start = std::chrono::high_resolution_clock::now();
