@@ -10,6 +10,7 @@
 #include "portaudio.h"
 #include <algorithm>
 #include <cstring>
+#include <string>
 
 #define WAVE_FILE 0
 #define PORT_AUDIO 1
@@ -24,9 +25,15 @@ void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &
 }
 
 int main(int argc, char** argv){
+
+    if (argc < 2){
+        std::cout << "Usage: " << argv[0] << " simulation time in seconds(int) ex: 2" << std::endl;
+        return -1;
+    }
     std::string input;
-    float sim_time = 2.0f;
+    int sim_time = std::stoi(argv[1]);
     int num_samples = sim_time * SAMPLE_RATE;
+    int sampsProc = 0;
 
     #if PORT_AUDIO
     AudioEngine audio;
@@ -37,60 +44,38 @@ int main(int argc, char** argv){
     std::vector<float> audio_buffer;
     std::vector<int16_t> int16_buffer;
 
+    RectangularMembrane membrane;
     //Real-time mechanicism 
-    while (1){
-
-        if (firstTime){
-            std::cout << "Press S to start Drum Simulation: (E to exit) " << std::endl;
-            firstTime = 0;
-        }else{
-            std::cout << "Press S to go again! (E to exit) " << std::endl;
-        }
+    while (sampsProc < num_samples) {
+        auto start = std::chrono::high_resolution_clock::now();
         
-        std::cin >> input;
+        // Generate ONE chunk of 1024 samples
+        membrane.Simulate();
         
-        if (input == "S" || input == "s"){
-            std::cout << "Starting Drum Simulation..." << std::endl;
-            int sampsProc = 0;
-            RectangularMembrane membrane;
-            while (sampsProc < num_samples) {
-                auto start = std::chrono::high_resolution_clock::now();
-                
-                // Generate ONE chunk of 1024 samples
-                membrane.Simulate();
-                
-                auto end = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double, std::milli> duration = end - start;
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> duration = end - start;
 
-                #if PORT_AUDIO
-                audio.pushChunk(membrane.getAudioBuffer().data(),membrane.getAudioBuffer().size());
-                #endif
-                
-                //Need to set some kind of logger here
-                // std::cout << "Frame: " << gBuf.frameCount << ", Samples Processed: " << sampsProc << "/" << num_samples << std::endl;
-                // std::cout << "Time taken for chunk: " << duration.count() << " ms" << std::endl;
+        #if PORT_AUDIO
+        audio.pushChunk(membrane.getAudioBuffer().data(),membrane.getAudioBuffer().size());
+        #endif
+        
+        //Need to set some kind of logger here
+        // std::cout << "Frame: " << gBuf.frameCount << ", Samples Processed: " << sampsProc << "/" << num_samples << std::endl;
+        // std::cout << "Time taken for chunk: " << duration.count() << " ms" << std::endl;
 
-                #if WAVE_FILE
-                // Append current audio buffer to the main audio buffer
-                //Be aware of overlap!
-                audio_buffer.insert(audio_buffer.end(), membrane.getAudioBuffer().begin(), membrane.getAudioBuffer().end()-(int)OVERLAP);
-                convertFloatToInt16(audio_buffer, int16_buffer);
-                #endif
-                
-                // Small delay to prevent busy-waiting
-                #if PORT_AUDIO
-                audio.delay();
-                #endif
-                sampsProc += BUFFER_SIZE - (int)OVERLAP; // Account for overlap
-            }
-        } else if(input == "E" || input == "e"){
-            std::cout << "Exiting Drum Simulation..." << std::endl;
-            break;
-        } else {
-            std::cout << "Invalid input. Please press S to start or E to exit." << std::endl;
-        }
-
-    }
+        #if WAVE_FILE
+        // Append current audio buffer to the main audio buffer
+        //Be aware of overlap!
+        audio_buffer.insert(audio_buffer.end(), membrane.getAudioBuffer().begin(), membrane.getAudioBuffer().end()-(int)OVERLAP);
+        convertFloatToInt16(audio_buffer, int16_buffer);
+        #endif
+        
+        // Small delay to prevent busy-waiting
+        #if PORT_AUDIO
+        audio.delay();
+        #endif
+        sampsProc += BUFFER_SIZE - (int)OVERLAP; // Account for overlap
+    } 
 
     // Build wav file
 #if WAVE_FILE
