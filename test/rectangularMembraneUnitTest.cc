@@ -10,6 +10,7 @@
 #include "portaudio.h"
 #include <algorithm>
 #include <cstring>
+#include <string>
 
 #define WAVE_FILE 0
 #define PORT_AUDIO 1
