@@ -5,8 +5,9 @@ A real-time 2D membrane drum synthesizer using finite difference method (FDM) to
 ## Overview
 
 This drum machine simulates the vibration of a 2D rectangular membrane (like a drum head) using numerical solutions to the 2D wave equation with damping. The displacement of the membrane is converted into audio in real-time at 48 kHz sample rate, while an interactive 3D visualization shows the membrane's motion.
+
 <p align="center">
-<img width="701" height="671" alt="Screenshot from 2026-03-30 22-06-10" src="https://github.com/user-attachments/assets/08e97335-7bd5-4470-8965-9344b09879ec" />
+   <img src= "https://github.com/user-attachments/assets/02b9705d-8503-4eba-91ca-dc8d28e05de9">
 </p>
 
 ### Key Features
