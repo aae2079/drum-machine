@@ -19,7 +19,7 @@ fi
 
 cmake .. \
   -DCMAKE_VERBOSE_MAKEFILE=ON \
-  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_COMPILER="$CXX_COMPILER"\
   >> build.log 2>&1
 cmake --build . >> build.log 2>&1
