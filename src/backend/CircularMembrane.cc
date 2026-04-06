@@ -68,59 +68,70 @@ void CircularMembrane::Simulate(){
         for (int ir = 1; ir < Nr_ - 1; ir++) {
             for (int itheta = 0; itheta < Ntheta_; itheta++) {
 
-                // Periodic wrapping in theta
                 int theta_next = (itheta + 1) % Ntheta_;
                 int theta_prev = (itheta - 1 + Ntheta_) % Ntheta_;
 
-                float radial_term = (c_ * dt_ / dr_) * (c_ * dt_ / dr_) * (
-                    u_curr_[(ir + 1) * Ntheta_ + itheta]
-                    + (1.0 / ir) * u_curr_[(ir + 1) * Ntheta_ + itheta]
-                    - 2.0 * u_curr_[ir * Ntheta_ + itheta]
-                    - (1.0 / ir) * u_curr_[(ir - 1) * Ntheta_ + itheta]
-                    + u_curr_[(ir - 1) * Ntheta_ + itheta]
-                );
+                float u_ip1 = u_curr_[(ir + 1) * Ntheta_ + itheta];
+                float u_i   = u_curr_[ir       * Ntheta_ + itheta];
+                float u_im1 = u_curr_[(ir - 1) * Ntheta_ + itheta];
 
-                float angular_term = (c_ * dt_) * (c_ * dt_) /
-                                    ((double)ir * ir * dr_ * dr_ * dtheta_ * dtheta_) * (
-                    u_curr_[ir * Ntheta_ + theta_next]
-                    + u_curr_[ir * Ntheta_ + theta_prev]
-                    - 2.0 * u_curr_[ir * Ntheta_ + itheta]
-                );
+                double CFL2 = (c_ * dt_ / dr_) * (c_ * dt_ / dr_);
 
-                u_next_[ir * Ntheta_ + itheta] = 2.0 * u_curr_[ir * Ntheta_ + itheta]
-                                            - u_prev_[ir * Ntheta_ + itheta]
-                                            + radial_term
-                                            + angular_term;
+                // Correct polar Laplacian radial part:
+                // d²u/dr² + (1/r)(du/dr)
+                // = (u[i+1] - 2u[i] + u[i-1])/dr²  +  (u[i+1] - u[i-1])/(2*i*dr²)
+                float radial_term = (float)(CFL2 * (
+                    u_ip1 - 2.0f * u_i + u_im1          // d²u/dr²
+                    + (u_ip1 - u_im1) / (2.0 * ir)        // (1/r)(du/dr), r = ir*dr cancels one dr
+                ));
+
+                // Angular term: skip near center to avoid blow-up
+                float angular_term = 0.0f;
+                if (ir > 3) {
+                    angular_term = (float)((c_ * dt_) * (c_ * dt_) /
+                                ((double)ir * ir * dr_ * dr_ * dtheta_ * dtheta_) * (
+                        u_curr_[ir * Ntheta_ + theta_next]
+                        + u_curr_[ir * Ntheta_ + theta_prev]
+                        - 2.0f * u_i
+                    ));
+                }
+
+                float val = 2.0f * u_i
+                        - u_prev_[ir * Ntheta_ + itheta]
+                        + radial_term
+                        + angular_term;
+
+                // Clamp to prevent NaN propagation
+                u_next_[ir * Ntheta_ + itheta] = std::max(-1.0f, std::min(1.0f, val));
             }
         }
 
-        // Handle center singularity (r=0)
+        // Center singularity
         double center_avg = 0.0;
-        for (int itheta = 0; itheta < Ntheta_; itheta++) {
+        for (int itheta = 0; itheta < Ntheta_; itheta++)
             center_avg += u_curr_[1 * Ntheta_ + itheta];
-        }
         center_avg /= Ntheta_;
-        for (int itheta = 0; itheta < Ntheta_; itheta++) {
-            u_next_[0 * Ntheta_ + itheta] = 2.0 * u_curr_[0 * Ntheta_ + itheta]
-                                        - u_prev_[0 * Ntheta_ + itheta]
-                                        + 4.0 * (c_ * dt_ / dr_) * (c_ * dt_ / dr_)
-                                            * (center_avg - u_curr_[0 * Ntheta_ + itheta]);
-        }
 
-        // Enforce outer boundary
-        for (int itheta = 0; itheta < Ntheta_; itheta++) {
-            u_next_[(Nr_ - 1) * Ntheta_ + itheta] = 0.0;
-        }
+        float center_val = (float)(2.0 * u_curr_[0]
+                                - u_prev_[0]
+                                + 4.0 * (c_ * dt_ / dr_) * (c_ * dt_ / dr_)
+                                * (center_avg - u_curr_[0]));
+        center_val = std::max(-1.0f, std::min(1.0f, center_val));
+
+        for (int itheta = 0; itheta < Ntheta_; itheta++)
+            u_next_[0 * Ntheta_ + itheta] = center_val;
+
+        // Outer boundary
+        for (int itheta = 0; itheta < Ntheta_; itheta++)
+            u_next_[(Nr_ - 1) * Ntheta_ + itheta] = 0.0f;
 
         std::swap(u_prev_, u_curr_);
         std::swap(u_curr_, u_next_);
 
-        // Audio sample: average over angles at 2/3 radius
         int r_mic = (int)(Nr_ * 2.0 / 3.0);
         double sample = 0.0;
-        for (int itheta = 0; itheta < Ntheta_; itheta++) {
+        for (int itheta = 0; itheta < Ntheta_; itheta++)
             sample += u_curr_[r_mic * Ntheta_ + itheta];
-        }
         curBuf[tt] = 15.0f * (float)(sample / Ntheta_);
     }
 

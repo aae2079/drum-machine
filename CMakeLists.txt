@@ -32,14 +32,14 @@ pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 set(SOURCES
     src/main.cc
     src/frontend/drumRenderer.cc
-    #src/CircularMembrane.cpp
+    src/backend/CircularMembrane.cc
     src/backend/RectangularMembrane.cc
     src/backend/audioEngine.cc
     src/3rdparty/glad.c
 )
 
 set(HEADERS
-    #include/CircularMembrane.hpp
+    include/CircularMembrane.hpp
     include/RectangularMembrane.hpp
     include/Surface.hpp
     include/audioDefs.hpp

@@ -39,6 +39,7 @@ class DrumRenderer{
         void deleteBuffers();
         
         void updateVertexData(const std::vector<GLfloat>& gridData);
+        void updateCircularVertexData(const std::vector<GLfloat>& gridData);
 
         // Rendering
         void setClearColor(float r, float g, float b, float a);
@@ -71,6 +72,7 @@ class DrumRenderer{
         std::string windowTitle;
 
         void buildMesh();
+        void buildCircularMesh();
         
         GLuint vao, vbo, ebo;
         GLuint shaderProgramID;

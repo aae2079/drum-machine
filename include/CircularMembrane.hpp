@@ -4,16 +4,23 @@
 #include <vector>
 #include <cstddef>
 #include <string>
+#include <cmath>
+#include "simDefs.hpp"
+#include "audioDefs.hpp"
 
-// Skeleton class for a circular membrane model.
-// This header declares the public API and minimal data members.
 class CircularMembrane {
 public:
     // Construct a membrane with given radius (meters) and tension (N/m)
-    CircularMembrane();
-    CircularMembrane(double radius, double tension, double rho, double c, double dt, double, dr, double dtheta,
-                    std::size_t Nr, std::size_t Ntheta);
+    CircularMembrane(double radius = 0.1, double tension = 100.0, double rho = 0.01, double c = 1.0, double dt = 1/SAMPLE_RATE, double dr = 0.001, double dtheta = M_PI / 180,
+                    unsigned int Nr = GRID_X, unsigned int Ntheta = GRID_Y);
     ~CircularMembrane();
+
+    std::vector<float>& getCurrentGrid() { return u_curr_; }
+    std::vector<float>& getAudioBuffer() { return audioBuf_; }
+        
+    
+    void setInitialCondition();
+    void Simulate();
 
 private:
     double radius_;   // meters
@@ -26,12 +33,17 @@ private:
 
 
     // Discretization / storage placeholders
-    std::size_t Nr_; // radial samples
-    std::size_t Ntheta_; //angular samples
+    unsigned int Nr_; // radial samples
+    unsigned int Ntheta_; //angular samples
 
-    std::vector<std::vector<double>> u_prev_; // membrane state at previous time step
-    std::vector<std::vector<double>> u_curr_; // membrane state at current time step
-    std::vector<std::vector<double>> u_next_; // membrane state at next time step
+    std::vector<float> u_prev_; // membrane state at previous time step
+    std::vector<float> u_curr_; // membrane state at current time step
+    std::vector<float> u_next_; // membrane state at next time step
+    
+    std::vector<float> audioBuf_; // audio buffer output
+    std::vector<float> histBuf_; // history buffer for overlap
+    
+    int firstTime; // flag for first time processing
 
 };
 

@@ -3,6 +3,7 @@
 #include <chrono>
 #include "simDefs.hpp"
 #include "RectangularMembrane.hpp"
+#include "CircularMembrane.hpp"
 #include "drumRenderer.hpp"
 #include "audioEngine.hpp"
 
@@ -38,7 +39,7 @@ int main(void) {
 	glm::mat4 model = glm::mat4(1.0f);
 	glm::mat4 view = glm::mat4(1.0f);
 	glm::mat4 proj = glm::mat4(1.0f);
-	RectangularMembrane membrane;
+	CircularMembrane membrane;
 	bool simRunning = false;
 	int sampsProc = 0;
 	while (!drumGui.shouldClose()) {
@@ -64,7 +65,7 @@ int main(void) {
 				sampsProc = 0;
 				membrane.setInitialCondition();
 				std::cout << "Simulation finished! Press S to start again." << std::endl;
-				drumGui.updateVertexData(membrane.getCurrentGrid());
+				drumGui.updateCircularVertexData(membrane.getCurrentGrid());
 				continue;
 			}
 			membrane.Simulate();
@@ -74,7 +75,7 @@ int main(void) {
 		}
 			
 		// Always update and render
-		drumGui.updateVertexData(membrane.getCurrentGrid());
+		drumGui.updateCircularVertexData(membrane.getCurrentGrid());
 		drumGui.setClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		drumGui.clear();
 		drumGui.activateShaderProgram();
