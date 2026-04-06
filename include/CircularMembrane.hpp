@@ -8,6 +8,10 @@
 #include "simDefs.hpp"
 #include "audioDefs.hpp"
 
+#if defined(_WIN32) || defined(_WIN64)
+    #define M_PI 3.14159265358979323846
+#endif
+
 class CircularMembrane {
 public:
     // Construct a membrane with given radius (meters) and tension (N/m)
