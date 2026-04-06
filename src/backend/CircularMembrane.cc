@@ -20,12 +20,14 @@ CircularMembrane::CircularMembrane(double radius, double tension, double rho, do
 
 
 
-    // Fix outer boundary: all angular positions at r = Nr_-1
+    // Dirichlet fixed outer boundary: all angular positions at r = Nr_-1
     for (int jj = 0; jj < Ntheta_; jj++) {
         u_curr_[(Nr_ - 1) * Ntheta_ + jj] = 0.0f;
         u_prev_[(Nr_ - 1) * Ntheta_ + jj] = 0.0f;
         u_next_[(Nr_ - 1) * Ntheta_ + jj] = 0.0f;
     }
+
+    // Fixed center
 
     setInitialCondition();
 }
@@ -50,12 +52,6 @@ void CircularMembrane::setInitialCondition(){
             u_curr_[ir * Ntheta_ + itheta] = val;
             u_prev_[ir * Ntheta_ + itheta] = val; 
         }
-    }
-
-    // Enforce boundary
-    for (int itheta = 0; itheta < Ntheta_; itheta++) {
-        u_curr_[(Nr_ - 1) * Ntheta_ + itheta] = 0.0f;
-        u_prev_[(Nr_ - 1) * Ntheta_ + itheta] = 0.0f;
     }
 }
 
