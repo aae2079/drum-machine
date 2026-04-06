@@ -10,6 +10,8 @@
 #define GRID_X 100
 #define GRID_Y 100
 
-
+#if defined(_WIN32) || defined(_WIN64)
+    #define M_PI 3.14159265358979323846
+#endif
 
 #endif // DRUM_MACHINE_SIM_DEFS_H
