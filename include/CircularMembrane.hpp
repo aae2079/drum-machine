@@ -12,9 +12,11 @@
 class CircularMembrane {
 public:
     // Construct a membrane with given radius (meters) and tension (N/m)
-    CircularMembrane(double radius = 0.1, double tension = 100.0, double rho = 0.01, double c = 1.0, double dt = 1/SAMPLE_RATE, double dr = 0.001, double dtheta = M_PI / 180,
+    CircularMembrane(double radius = 0.1, double tension = 100.0, double rho = 0.01, double c = 1.0, double dt = 1/(float)SAMPLE_RATE, double dr = 0.001, double dtheta = M_PI / 180,
                     unsigned int Nr = GRID_X, unsigned int Ntheta = GRID_Y);
     ~CircularMembrane();
+
+    void cleanup();
 
     std::vector<float>& getCurrentGrid() { return u_curr_; }
     std::vector<float>& getAudioBuffer() { return audioBuf_; }

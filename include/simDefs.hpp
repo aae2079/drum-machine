@@ -1,7 +1,7 @@
 #ifndef DRUM_MACHINE_SIM_DEFS_H
 #define DRUM_MACHINE_SIM_DEFS_H
 
-#define CFL 0.25  // Courant-Friedrichs-Lewy condition for stability
+#define CFL 0.6  // Courant-Friedrichs-Lewy condition for stability
 #define BUFFER_SIZE 2048
 #define OVERLAP 512 // Number of samples to overlap for streaming
 

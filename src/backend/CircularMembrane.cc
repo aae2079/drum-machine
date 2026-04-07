@@ -8,9 +8,11 @@
 
 CircularMembrane::CircularMembrane(double radius, double tension, double rho, double c, double dt, double dr, double dtheta,
                     unsigned int Nr, unsigned int Ntheta) : radius_(radius), tension_(tension), rho_(rho), c_(c), dt_(dt), dr_(dr), dtheta_(dtheta), Nr_(Nr), Ntheta_(Ntheta) {
- 
+    
+    dr_ = radius_ / (Nr_ - 1); // radial step size based on radius and number of radial samples
+    dtheta_ = 2 * M_PI / Ntheta_; // angular step size based on number of angular samples
     c_ = std::sqrt(tension_ / rho_);       // wave speed m/s
-
+    dt_ = CFL * dr_ / c_; // time step based on CFL condition for stability
     // Initialize state vectors
     u_prev_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_curr_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
@@ -41,9 +43,20 @@ CircularMembrane::~CircularMembrane() {
     histBuf_.clear();
 }
 
+void CircularMembrane::cleanup() {
+    // Clear vectors to free memory
+    u_prev_.clear();
+    u_curr_.clear();
+    u_next_.clear();
+    audioBuf_.clear();
+    histBuf_.clear();
+}
+
 void CircularMembrane::setInitialCondition(){
     // Simple Gaussian strike/pluck at center
     float amp = 0.1f;
+
+    #pragma omp parallel for schedule(static) collapse(2)
     for (int ir = 1; ir < Nr_ - 1; ir++) {
         for (int itheta = 0; itheta < Ntheta_; itheta++) {
             // Gaussian centered at r=0, decaying outward radially
@@ -58,77 +71,53 @@ void CircularMembrane::setInitialCondition(){
 void CircularMembrane::Simulate(){
 
     std::vector<float> curBuf(BUFFER_SIZE, 0.0f);
-    for (int tt = 0; tt < (int)BUFFER_SIZE; tt++) {
+    for(int tt = 0; tt < (int)BUFFER_SIZE; tt++){
+        // --- spatial update ----
+        #pragma omp parallel for schedule(static)
+        for (int ii = 1; ii < Nr_ - 1; ii++){
+            float r = ii * dr_;
+            for (int jj = 0; jj < Ntheta_; jj++){
+                int j_plus = (jj + 1) % Ntheta_;
+                int j_minus = (jj - 1 + Ntheta_) % Ntheta_;
 
-        #pragma omp parallel for schedule(static) collapse(2)
-        for (int ir = 1; ir < Nr_ - 1; ir++) {
-            for (int itheta = 0; itheta < Ntheta_; itheta++) {
+                //d2u/dr2
+                float d2u_dr2 = (u_curr_[(ii + 1) * Ntheta_ + jj] - 2.0 * u_curr_[ii * Ntheta_ + jj] + u_curr_[(ii - 1) * Ntheta_ + jj]) / (dr_ * dr_);
+                
+                //(1/r) * du/dr
+                float du_dr = (u_curr_[(ii + 1) * Ntheta_ + jj] - u_curr_[(ii - 1) * Ntheta_ + jj]) / (2.0 * dr_);
+                float term_r = du_dr / r;
 
-                int theta_next = (itheta + 1) % Ntheta_;
-                int theta_prev = (itheta - 1 + Ntheta_) % Ntheta_;
+                // (1/r^2) * d2u/dtheta2
+                float d2u_dtheta2 = (u_curr_[ii * Ntheta_ + j_plus] - 2.0 * u_curr_[ii * Ntheta_ + jj] + u_curr_[ii * Ntheta_ + j_minus]) / (dtheta_ * dtheta_);
+                float term_theta = d2u_dtheta2 / (r * r);
+                float laplacian = d2u_dr2 + term_r + term_theta;
 
-                float u_ip1 = u_curr_[(ir + 1) * Ntheta_ + itheta];
-                float u_i   = u_curr_[ir       * Ntheta_ + itheta];
-                float u_im1 = u_curr_[(ir - 1) * Ntheta_ + itheta];
-
-                double CFL2 = (c_ * dt_ / dr_) * (c_ * dt_ / dr_);
-
-                // Correct polar Laplacian radial part:
-                // d²u/dr² + (1/r)(du/dr)
-                // = (u[i+1] - 2u[i] + u[i-1])/dr²  +  (u[i+1] - u[i-1])/(2*i*dr²)
-                float radial_term = (float)(CFL2 * (
-                    u_ip1 - 2.0f * u_i + u_im1          // d²u/dr²
-                    + (u_ip1 - u_im1) / (2.0 * ir)        // (1/r)(du/dr), r = ir*dr cancels one dr
-                ));
-
-                // Angular term: skip near center to avoid blow-up
-                float angular_term = 0.0f;
-                if (ir > 3) {
-                    angular_term = (float)((c_ * dt_) * (c_ * dt_) /
-                                ((double)ir * ir * dr_ * dr_ * dtheta_ * dtheta_) * (
-                        u_curr_[ir * Ntheta_ + theta_next]
-                        + u_curr_[ir * Ntheta_ + theta_prev]
-                        - 2.0f * u_i
-                    ));
-                }
-
-                float val = 2.0f * u_i
-                        - u_prev_[ir * Ntheta_ + itheta]
-                        + radial_term
-                        + angular_term;
-
-                // Clamp to prevent NaN propagation
-                u_next_[ir * Ntheta_ + itheta] = std::max(-1.0f, std::min(1.0f, val));
+                u_next_[ii * Ntheta_ + jj] = 2.0f * u_curr_[ii * Ntheta_ + jj] - u_prev_[ii * Ntheta_ + jj] + (c_ * c_ * dt_ * dt_) * laplacian;
             }
         }
 
-        // Center singularity
-        double center_avg = 0.0;
-        for (int itheta = 0; itheta < Ntheta_; itheta++)
-            center_avg += u_curr_[1 * Ntheta_ + itheta];
-        center_avg /= Ntheta_;
+        //enforce Dirilechlet
+        for (int jj = 0; jj < Ntheta_; jj++) {
+            u_next_[(Nr_ - 1) * Ntheta_ + jj] = 0.0f;
+        }
 
-        float center_val = (float)(2.0 * u_curr_[0]
-                                - u_prev_[0]
-                                + 4.0 * (c_ * dt_ / dr_) * (c_ * dt_ / dr_)
-                                * (center_avg - u_curr_[0]));
-        center_val = std::max(-1.0f, std::min(1.0f, center_val));
+        //origin singularity (r = 0): i will average over all theta neighbors to enforce symmetry
+        double avg = 0.0;
+        for (int jj = 0; jj < Ntheta_;jj++){
+            avg += u_curr_[1 * Ntheta_ + jj];
+        }
+        avg /= Ntheta_;
+        for (int jj = 0; jj < Ntheta_; jj++){
+            u_next_[0 * Ntheta_ + jj] = avg;
+        }
 
-        for (int itheta = 0; itheta < Ntheta_; itheta++)
-            u_next_[0 * Ntheta_ + itheta] = center_val;
+        //sample audio at center of membrane
+        curBuf[tt] = u_curr_[0]; // center point r=0, all theta the same
 
-        // Outer boundary
-        for (int itheta = 0; itheta < Ntheta_; itheta++)
-            u_next_[(Nr_ - 1) * Ntheta_ + itheta] = 0.0f;
+        //advance time
+        u_prev_ = u_curr_;
+        u_curr_ = u_next_;
 
-        std::swap(u_prev_, u_curr_);
-        std::swap(u_curr_, u_next_);
-
-        int r_mic = (int)(Nr_ * 2.0 / 3.0);
-        double sample = 0.0;
-        for (int itheta = 0; itheta < Ntheta_; itheta++)
-            sample += u_curr_[r_mic * Ntheta_ + itheta];
-        curBuf[tt] = 15.0f * (float)(sample / Ntheta_);
     }
 
     if (firstTime){
@@ -139,7 +128,7 @@ void CircularMembrane::Simulate(){
     } else {
         // For subsequent chunks, concatenate histBuf_ and curBuf to audioBuf_
         std::copy(histBuf_.begin(), histBuf_.end(), audioBuf_.begin());
-        std::copy(curBuf.begin(), curBuf.end(), audioBuf_.begin() + (int)OVERLAP);
+        std::copy(curBuf.begin(), curBuf.end() - (int)OVERLAP, audioBuf_.begin() + (int)OVERLAP);
         // Update histBuf_ for next chunk
         std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
     }

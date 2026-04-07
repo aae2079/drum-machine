@@ -10,6 +10,28 @@
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
 int firstTime = 1;
+bool simRunning = false;
+// Variables that help the rotation of the grid
+float rotation = -30.0f;
+float tilt = 15.0f;
+
+
+void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		simRunning = true;
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+		rotation -= 1.0f;
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+		rotation += 1.0f;
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		tilt += 1.0f;
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		tilt -= 1.0f;
+}
+
 int main(void) {
 	std::string input;
     float sim_time = 2.0f;
@@ -26,11 +48,8 @@ int main(void) {
    	}
 
    	drumGui.compileShaders("default.vert","default.frag");
-	drumGui.setupVertexAttributes();
 
-    // Variables that help the rotation of the grid
-	float rotation = -30.0f;
-    float tilt = 15.0f;
+
 	drumGui.enableDepthTest();
 	drumGui.enableBlending();
 	drumGui.setPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -39,24 +58,14 @@ int main(void) {
 	glm::mat4 model = glm::mat4(1.0f);
 	glm::mat4 view = glm::mat4(1.0f);
 	glm::mat4 proj = glm::mat4(1.0f);
+
 	CircularMembrane membrane;
-	bool simRunning = false;
+
 	int sampsProc = 0;
 	while (!drumGui.shouldClose()) {
 		drumGui.pollEvents();
 		// Input handling
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_S) == GLFW_PRESS)
-			simRunning = true;
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
-			break;
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_LEFT) == GLFW_PRESS)
-			rotation -= 1.0f;
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_RIGHT) == GLFW_PRESS)
-			rotation += 1.0f;
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_UP) == GLFW_PRESS)
-			tilt += 1.0f;
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_DOWN) == GLFW_PRESS)
-			tilt -= 1.0f;
+		glfwSetKeyCallback(drumGui.getWindow(), keyCB);
 
 		// Step sim only if running
 		if (simRunning){
@@ -70,6 +79,9 @@ int main(void) {
 			}
 			membrane.Simulate();
 			audio.pushChunk(membrane.getAudioBuffer().data(), membrane.getAudioBuffer().size());
+			
+			//add logger here eventually
+			
 			audio.delay();
 			sampsProc += BUFFER_SIZE;
 		}
