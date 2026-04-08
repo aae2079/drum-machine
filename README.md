@@ -27,6 +27,7 @@ drum-machine/
 │   ├── main.cc                      # Main application loop
 │   ├── backend/
 │   │   ├── RectangularMembrane.cc   # Physics solver
+|   |   ├── CircularMembrane.cc 
 │   │   └── audioEngine.cc           # Audio I/O with PortAudio
 │   └── frontend/
 │       ├── drumRenderer.cc          # OpenGL rendering

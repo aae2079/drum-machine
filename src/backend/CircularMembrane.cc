@@ -119,17 +119,17 @@ void CircularMembrane::Simulate(){
         u_curr_ = u_next_;
 
     }
-
-    if (firstTime){
-        audioBuf_ = curBuf;
-        //copy curBuf to histBuf_ for next chunk
-        std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
-        firstTime = 0;
-    } else {
-        // For subsequent chunks, concatenate histBuf_ and curBuf to audioBuf_
-        std::copy(histBuf_.begin(), histBuf_.end(), audioBuf_.begin());
-        std::copy(curBuf.begin(), curBuf.end() - (int)OVERLAP, audioBuf_.begin() + (int)OVERLAP);
-        // Update histBuf_ for next chunk
-        std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
-    }
+    audioBuf_ = curBuf;
+    // if (firstTime){
+    //     audioBuf_ = curBuf;
+    //     //copy curBuf to histBuf_ for next chunk
+    //     std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
+    //     firstTime = 0;
+    // } else {
+    //     // For subsequent chunks, concatenate histBuf_ and curBuf to audioBuf_
+    //     std::copy(histBuf_.begin(), histBuf_.end(), audioBuf_.begin());
+    //     std::copy(curBuf.begin(), curBuf.end() - (int)OVERLAP, audioBuf_.begin() + (int)OVERLAP);
+    //     // Update histBuf_ for next chunk
+    //     std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
+    // }
 }
