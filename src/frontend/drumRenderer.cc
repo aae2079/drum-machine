@@ -7,7 +7,7 @@ using namespace std;
 
 DrumRenderer::DrumRenderer(uint32_t wWidth, uint32_t wHeight, const char* windowTitle)
         : WIDTH(wWidth), HEIGHT(wHeight), windowTitle(windowTitle), window(nullptr), vao(0), vbo(0), ebo(0), shaderProgramID(0),
-		  gridX(GRID_X), gridY(GRID_Y) {
+		  gridX(GRID_R), gridY(GRID_TH) {
 }
 
 DrumRenderer::~DrumRenderer() {
@@ -48,8 +48,8 @@ bool DrumRenderer::init(){
     return true;
 }
 void DrumRenderer::buildCircularMesh() {
-    int nRadial  = GRID_X;  // Nr
-    int nAngular = GRID_Y;  // Ntheta
+    int nRadial  = GRID_R;  // Nr
+    int nAngular = GRID_TH;  // Ntheta
 
     float radius = 1.0f; // normalized radius in NDC
 
@@ -286,8 +286,8 @@ GLuint DrumRenderer::getShaderProgramID() const
 }
 
 void DrumRenderer::updateCircularVertexData(const std::vector<GLfloat>& gridData) {
-    int nRadial  = GRID_X;
-    int nAngular = GRID_Y;
+    int nRadial  = GRID_R;
+    int nAngular = GRID_TH;
 
     // Center vertex stays at y=0 (fixed boundary at edge, free at center)
     // vertices_[1] = 0.0f; // already zero

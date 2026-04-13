@@ -8,18 +8,24 @@
 //Sets tonality of the drum sound, bigger membrane = lower tone, smaller membrane = higher tone
 //This will be useful when creating a drum set!
 
+
+/*------- CircularMembrane Definitions----------*/
 /*
 
-    GRID_X in CircularCase = radial rings
-    GRID_Y in CircularCase = angular samples per ring
-
-    GRID_X in RectangularCase = number of vertices in x direction
-    GRID_Y in RectangularCase = number of vertices in y direction
-
+    GRID_R = radial rings
+    GRID_TH = angular samples per ring
 
 */
-#define GRID_X 50
-#define GRID_Y 75
+#define GRID_R 50
+#define GRID_TH 75
+/*
+
+Material Density for Mylar (Typical drum head mateiral) ranges from 
+1.39 - 1.40 g/cm^3
+*/
+#define MATERIAL_DENSITY 1.4E3 // in g/m^3, converted from g/cm^3
+#define TENSION 100.0f 
+#define RADIUS 0.3f
 
 #if defined(_WIN32) || defined(_WIN64)
     #define M_PI 3.14159265358979323846

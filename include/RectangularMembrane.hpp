@@ -16,7 +16,7 @@ using finite difference method to solve the wave equation.
 */
 class RectangularMembrane {
     public:
-        RectangularMembrane(int nx=GRID_X, int ny=GRID_Y, float damp = 10.0, float c = 1.0, float time_step = 1.0/SAMPLE_RATE, float sim_time = 1.0);
+        RectangularMembrane(int nx=GRID_R, int ny=GRID_TH, float damp = 10.0, float c = 1.0, float time_step = 1.0/SAMPLE_RATE, float sim_time = 1.0);
         void setInitialCondition();
         void Simulate();
         ~RectangularMembrane();

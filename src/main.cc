@@ -64,6 +64,7 @@ int main(void) {
    	}
 	// Input handling
 	SimState state;
+	state.membrane.init((float)RADIUS, (float)TENSION, (float)MATERIAL_DENSITY, GRID_R, GRID_TH);
 	glfwSetKeyCallback(drumGui.getWindow(), keyCB);
 	glfwSetWindowUserPointer(drumGui.getWindow(), &state);
 	glfwSetMouseButtonCallback(drumGui.getWindow(), mouseCB);
@@ -89,8 +90,7 @@ int main(void) {
 			if(state.sampsProc > num_samples){
 				state.simRunning = false;
 				state.sampsProc = 0;
-				state.membrane.setInitialCondition();
-				std::cout << "Simulation finished! Press S to start again." << std::endl;
+				std::cout << "Simulation finished! Click again." << std::endl;
 				drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
 				continue;
 			}
