@@ -7,7 +7,7 @@ using namespace std;
 
 DrumRenderer::DrumRenderer(uint32_t wWidth, uint32_t wHeight, const char* windowTitle)
         : WIDTH(wWidth), HEIGHT(wHeight), windowTitle(windowTitle), window(nullptr), vao(0), vbo(0), ebo(0), shaderProgramID(0),
-		  gridX(GRID_X), gridY(GRID_Y) {
+		  gridX(GRID_R), gridY(GRID_TH) {
 }
 
 DrumRenderer::~DrumRenderer() {
@@ -43,11 +43,99 @@ bool DrumRenderer::init(){
 
     glViewport(0,0, WIDTH, HEIGHT);
 
-    buildMesh();
+    buildCircularMesh();
 
     return true;
 }
+void DrumRenderer::buildCircularMesh() {
+    int nRadial  = GRID_R;  // Nr
+    int nAngular = GRID_TH;  // Ntheta
 
+    float radius = 1.0f; // normalized radius in NDC
+
+    // Center vertex (index 0)
+    // position
+    vertices_.push_back(0.0f); // x
+    vertices_.push_back(0.0f); // y (displacement)
+    vertices_.push_back(0.0f); // z
+    // color
+    vertices_.push_back(0.0f);
+    vertices_.push_back(0.0f);
+    vertices_.push_back(0.0f);
+    // TexCoord
+    vertices_.push_back(0.5f);
+    vertices_.push_back(0.5f);
+    // normal
+    vertices_.push_back(0.0f);
+    vertices_.push_back(1.0f);
+    vertices_.push_back(0.0f);
+
+    // Build rings: r goes from 1..nRadial (ring 0 = innermost, ring nRadial-1 = outermost)
+    for (int r = 0; r < nRadial; r++) {
+        float rNorm = (float)(r + 1) / nRadial * radius; // radius of this ring
+
+        for (int a = 0; a < nAngular; a++) {
+            float theta = 2.0f * M_PI * (float)a / nAngular;
+
+            float x = rNorm * cos(theta);
+            float z = rNorm * sin(theta);
+            float y = 0.0f; // displaced by simulation later
+
+            // position
+            vertices_.push_back(x);
+            vertices_.push_back(y);
+            vertices_.push_back(z);
+            // color
+            vertices_.push_back(0.0f);
+            vertices_.push_back(0.0f);
+            vertices_.push_back(0.0f);
+            // TexCoord
+            vertices_.push_back(0.5f + 0.5f * cos(theta) * rNorm);
+            vertices_.push_back(0.5f + 0.5f * sin(theta) * rNorm);
+            // normal
+            vertices_.push_back(0.0f);
+            vertices_.push_back(1.0f);
+            vertices_.push_back(0.0f);
+        }
+    }
+
+    // --- Indices ---
+
+    // Inner ring: fan from center (vertex 0) to first ring (indices 1..nAngular)
+    for (int a = 0; a < nAngular; a++) {
+        int curr = 1 + a;
+        int next = 1 + (a + 1) % nAngular;
+        indices_.push_back(0);
+        indices_.push_back(curr);
+        indices_.push_back(next);
+    }
+
+    // Remaining rings: quads between ring r and ring r+1
+    // vertex index for ring r, angle a = 1 + r*nAngular + a
+    for (int r = 0; r < nRadial - 1; r++) {
+        for (int a = 0; a < nAngular; a++) {
+            int aNext = (a + 1) % nAngular;
+
+            int bl = 1 + r       * nAngular + a;
+            int br = 1 + r       * nAngular + aNext;
+            int tl = 1 + (r + 1) * nAngular + a;
+            int tr = 1 + (r + 1) * nAngular + aNext;
+
+            // triangle 1
+            indices_.push_back(bl);
+            indices_.push_back(tl);
+            indices_.push_back(br);
+            // triangle 2
+            indices_.push_back(br);
+            indices_.push_back(tl);
+            indices_.push_back(tr);
+        }
+    }
+
+    createBuffers(vertices_.data(), vertices_.size() * sizeof(GLfloat),
+                  indices_.data(), indices_.size() * sizeof(GLuint));
+    setupVertexAttributes();
+}
 void DrumRenderer::buildMesh(){
     for(int i = 0; i < gridX; i++){
 		for (int j = 0; j < gridY; j++){
@@ -197,6 +285,29 @@ GLuint DrumRenderer::getShaderProgramID() const
     return shaderProgramID;
 }
 
+void DrumRenderer::updateCircularVertexData(const std::vector<GLfloat>& gridData) {
+    int nRadial  = GRID_R;
+    int nAngular = GRID_TH;
+
+    // Center vertex stays at y=0 (fixed boundary at edge, free at center)
+    // vertices_[1] = 0.0f; // already zero
+
+    // Update each ring vertex's y from the polar grid data
+    // gridData is indexed as gridData[r * nAngular + a]
+
+    #pragma omp parallel for schedule(static) collapse(2)
+    for (int r = 0; r < nRadial; r++) {
+        for (int a = 0; a < nAngular; a++) {
+            int vertexIdx  = 1 + r * nAngular + a;     // vertex index in vertices_
+            int vertexStart = vertexIdx * 11;           // 11 floats per vertex
+            vertices_[vertexStart + 1] = gridData[r * nAngular + a]; // y = displacement
+        }
+    }
+
+    bindVBO();
+    glBufferSubData(GL_ARRAY_BUFFER, 0, vertices_.size() * sizeof(GLfloat), vertices_.data());
+    unbindVBO();
+}
 
 void DrumRenderer::updateVertexData(const std::vector<GLfloat>& gridData)
 {

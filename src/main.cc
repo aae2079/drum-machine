@@ -1,14 +1,53 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <thread>
 #include "simDefs.hpp"
 #include "RectangularMembrane.hpp"
+#include "CircularMembrane.hpp"
 #include "drumRenderer.hpp"
 #include "audioEngine.hpp"
 
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
 int firstTime = 1;
+bool simRunning = false;
+// Variables that help the rotation of the grid
+float rotation = -30.0f;
+float tilt = 15.0f;
+
+typedef struct {
+    CircularMembrane membrane;
+    int simRunning = 0;
+    int sampsProc = 0;
+}SimState;
+
+
+void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+		rotation -= 1.0f;
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+		rotation += 1.0f;
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		tilt += 1.0f;
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		tilt -= 1.0f;
+}
+
+void mouseCB(GLFWwindow* window, int button, int action, int mods)
+{
+	// Placeholder for mouse input handling if needed in the future
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        auto* state = static_cast<SimState*>(glfwGetWindowUserPointer(window));
+        state->membrane.setInitialCondition();
+        state->sampsProc = 0;
+        state->simRunning = true;
+    }
+}
+
 int main(void) {
 	std::string input;
     float sim_time = 2.0f;
@@ -23,13 +62,16 @@ int main(void) {
    	if(!drumGui.init()){
 		std::cerr << "Failed to initialize Drum Machine" << std::endl;
    	}
+	// Input handling
+	SimState state;
+	state.membrane.init((float)RADIUS, (float)TENSION, (float)MATERIAL_DENSITY, GRID_R, GRID_TH);
+	glfwSetKeyCallback(drumGui.getWindow(), keyCB);
+	glfwSetWindowUserPointer(drumGui.getWindow(), &state);
+	glfwSetMouseButtonCallback(drumGui.getWindow(), mouseCB);
 
-   	drumGui.compileShaders("default.vert","default.frag");
-	drumGui.setupVertexAttributes();
+   	drumGui.compileShaders("shaders/default.vert","shaders/default.frag");
 
-    // Variables that help the rotation of the grid
-	float rotation = -30.0f;
-    float tilt = 15.0f;
+
 	drumGui.enableDepthTest();
 	drumGui.enableBlending();
 	drumGui.setPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -38,43 +80,31 @@ int main(void) {
 	glm::mat4 model = glm::mat4(1.0f);
 	glm::mat4 view = glm::mat4(1.0f);
 	glm::mat4 proj = glm::mat4(1.0f);
-	RectangularMembrane membrane;
-	bool simRunning = false;
-	int sampsProc = 0;
-	while (!drumGui.shouldClose()) {
-		drumGui.pollEvents();
-		// Input handling
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_S) == GLFW_PRESS)
-			simRunning = true;
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
-			break;
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_LEFT) == GLFW_PRESS)
-			rotation -= 1.0f;
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_RIGHT) == GLFW_PRESS)
-			rotation += 1.0f;
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_UP) == GLFW_PRESS)
-			tilt += 1.0f;
-		if (glfwGetKey(drumGui.getWindow(), GLFW_KEY_DOWN) == GLFW_PRESS)
-			tilt -= 1.0f;
 
+	glfwSwapInterval(1); // Enable vsync for smoother rendering
+	while (!drumGui.shouldClose()) {
+		auto frameStart = std::chrono::steady_clock::now();
+		drumGui.pollEvents();
 		// Step sim only if running
-		if (simRunning){
-			if(sampsProc > num_samples){
-				simRunning = false;
-				sampsProc = 0;
-				membrane.setInitialCondition();
-				std::cout << "Simulation finished! Press S to start again." << std::endl;
-				drumGui.updateVertexData(membrane.getCurrentGrid());
+		if (state.simRunning){
+			if(state.sampsProc > num_samples){
+				state.simRunning = false;
+				state.sampsProc = 0;
+				std::cout << "Simulation finished! Click again." << std::endl;
+				drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
 				continue;
 			}
-			membrane.Simulate();
-			audio.pushChunk(membrane.getAudioBuffer().data(), membrane.getAudioBuffer().size());
-			audio.delay();
-			sampsProc += BUFFER_SIZE;
+			state.membrane.Simulate();
+			audio.pushChunk(state.membrane.getAudioBuffer().data(), state.membrane.getAudioBuffer().size());
+			
+			//add logger here eventually
+			
+			//audio.delay();
+			state.sampsProc += BUFFER_SIZE;
 		}
 			
 		// Always update and render
-		drumGui.updateVertexData(membrane.getCurrentGrid());
+		drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
 		drumGui.setClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		drumGui.clear();
 		drumGui.activateShaderProgram();
@@ -92,6 +122,12 @@ int main(void) {
 		drumGui.setUniform1f("scale", 0.5f);
 		drumGui.drawElements();
 		drumGui.swapBuffers();
-	}
+
+		auto frameEnd = std::chrono::steady_clock::now();
+		auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
+		auto frameBudget = std::chrono::milliseconds(16);
+		if (elapsed < frameBudget)
+			std::this_thread::sleep_for(frameBudget - elapsed);
+		}
     return 0;
 }

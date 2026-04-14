@@ -7,7 +7,8 @@ A real-time 2D membrane drum synthesizer using finite difference method (FDM) to
 This drum machine simulates the vibration of a 2D rectangular membrane (like a drum head) using numerical solutions to the 2D wave equation with damping. The displacement of the membrane is converted into audio in real-time at 48 kHz sample rate, while an interactive 3D visualization shows the membrane's motion.
 
 <p align="center">
-   <img src= "https://github.com/user-attachments/assets/02b9705d-8503-4eba-91ca-dc8d28e05de9">
+   <img src= "https://github.com/user-attachments/assets/7d44209a-7714-4026-81cf-dedf9e0a9ed6">
+
 </p>
 
 ### Key Features
@@ -26,6 +27,7 @@ drum-machine/
 │   ├── main.cc                      # Main application loop
 │   ├── backend/
 │   │   ├── RectangularMembrane.cc   # Physics solver
+|   |   ├── CircularMembrane.cc 
 │   │   └── audioEngine.cc           # Audio I/O with PortAudio
 │   └── frontend/
 │       ├── drumRenderer.cc          # OpenGL rendering
@@ -114,8 +116,8 @@ Edit `include/simDefs.hpp` to customize:
 #define CFL 0.25              // Courant stability parameter (< 0.5)
 #define BUFFER_SIZE 2048      // Audio buffer chunk size
 #define OVERLAP 512           // Overlap between chunks for streaming
-#define GRID_X 100            // Membrane grid width (affects tone)
-#define GRID_Y 100            // Membrane grid height (affects tone)
+#define GRID_R 100            // Membrane grid width (affects tone)
+#define GRID_TH 100            // Membrane grid height (affects tone)
 ```
 
 Edit `include/audioDefs.hpp` for audio settings:
@@ -141,7 +143,7 @@ float c = 1.0;                // Wave speed (higher = higher pitch)
 
 | Parameter | Effect | For Kick | For Tom | For Snare |
 |-----------|--------|----------|---------|-----------|
-| `GRID_X`, `GRID_Y` | Pitch | Large (100+) | Medium (70) | Small (50) |
+| `GRID_R`, `GRID_TH` | Pitch | Large (100+) | Medium (70) | Small (50) |
 | `damp` | Decay time | Low (5-8) | Medium (10) | High (15-20) |
 | `c` | Brightness | Low (0.8) | Medium (1.0) | High (1.2) |
 | `amp` | Strike strength | High (0.2) | Medium (0.1) | Low (0.05) |
@@ -262,7 +264,7 @@ sudo apt-get install --reinstall libglfw3-dev
 - Check CPU usage with `top` or Activity Monitor
 
 **Visualization lag**:
-- Reduce grid size: `GRID_X`, `GRID_Y` → 64 (faster)
+- Reduce grid size: `GRID_R`, `GRID_TH` → 64 (faster)
 - Lower frame rate cap (not currently implemented)
 - Enable release build: `-DCMAKE_BUILD_TYPE=Release`
 

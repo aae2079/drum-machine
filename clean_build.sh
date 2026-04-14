@@ -28,3 +28,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo "Build completed successfully. Logs are available in build/build.log"
+
+echo "Creating links to OpenGL shaders ... "
+mkdir "$BUILD_DIR"/bin/shaders/
+ln -sf "$SCRIPT_DIR"/src/frontend/default* "$BUILD_DIR"/bin/shaders/

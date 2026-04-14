@@ -4,34 +4,49 @@
 #include <vector>
 #include <cstddef>
 #include <string>
+#include <cmath>
+#include "simDefs.hpp"
+#include "audioDefs.hpp"
 
-// Skeleton class for a circular membrane model.
-// This header declares the public API and minimal data members.
+
 class CircularMembrane {
 public:
     // Construct a membrane with given radius (meters) and tension (N/m)
     CircularMembrane();
-    CircularMembrane(double radius, double tension, double rho, double c, double dt, double, dr, double dtheta,
-                    std::size_t Nr, std::size_t Ntheta);
     ~CircularMembrane();
 
+    void init(float radius, float tension, float rho_density,unsigned int Nr, unsigned int Ntheta);
+    void cleanup();
+
+    std::vector<float>& getCurrentGrid() { return u_curr_; }
+    std::vector<float>& getAudioBuffer() { return audioBuf_; }
+        
+    
+    void setInitialCondition();
+    void Simulate();
+
 private:
-    double radius_;   // meters
-    double tension_;  // N/m
-    double rho_;     // mass density kg/m^2
-    double c_;       // wave speed m/s
-    double dt_;      // time step s
-    double dr_;      // radial step size m
-    double dtheta_;  // angular step size radians
+    float radius_;   // meters
+    float tension_;  // N/m
+    float rho_;     // mass density kg/m^2
+    float c_;       // wave speed m/s
+    float dt_;      // time step s
+    float dr_;      // radial step size m
+    float dtheta_;  // angular step size radians
 
 
     // Discretization / storage placeholders
-    std::size_t Nr_; // radial samples
-    std::size_t Ntheta_; //angular samples
+    unsigned int Nr_; // radial samples
+    unsigned int Ntheta_; //angular samples
 
-    std::vector<std::vector<double>> u_prev_; // membrane state at previous time step
-    std::vector<std::vector<double>> u_curr_; // membrane state at current time step
-    std::vector<std::vector<double>> u_next_; // membrane state at next time step
+    std::vector<float> u_prev_; // membrane state at previous time step
+    std::vector<float> u_curr_; // membrane state at current time step
+    std::vector<float> u_next_; // membrane state at next time step
+    
+    std::vector<float> audioBuf_; // audio buffer output
+    std::vector<float> histBuf_; // history buffer for overlap
+    
+    int firstTime; // flag for first time processing
 
 };
 
