@@ -26,13 +26,13 @@ public:
     void Simulate();
 
 private:
-    double radius_;   // meters
-    double tension_;  // N/m
-    double rho_;     // mass density kg/m^2
-    double c_;       // wave speed m/s
-    double dt_;      // time step s
-    double dr_;      // radial step size m
-    double dtheta_;  // angular step size radians
+    float radius_;   // meters
+    float tension_;  // N/m
+    float rho_;     // mass density kg/m^2
+    float c_;       // wave speed m/s
+    float dt_;      // time step s
+    float dr_;      // radial step size m
+    float dtheta_;  // angular step size radians
 
 
     // Discretization / storage placeholders

@@ -3,7 +3,7 @@
 // No method definitions are provided here — implement them in this file when ready.
 
 #include "CircularMembrane.hpp"
-
+#include <iostream>
 // Intentionally empty: method implementations can be added by the developer.
 
 CircularMembrane::CircularMembrane() {}
@@ -27,7 +27,7 @@ void CircularMembrane::init(float radius, float tension, float rho_density, unsi
     dr_ = radius_ / (Nr_ - 1); // radial step size based on radius and number of radial samples
     dtheta_ = 2 * M_PI / Ntheta_; // angular step size based on number of angular samples
     c_ = std::sqrt(tension_ / rho_);       // wave speed m/s
-    dt_ = CFL * dr_/c_;  // time step based on stability condition
+    dt_ = CFL * dr_ / c_; // time step based on CFL condition for stability
     // Initialize state vectors
     u_prev_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_curr_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
@@ -111,13 +111,23 @@ void CircularMembrane::Simulate(){
         for (int jj = 0; jj < Ntheta_; jj++){
             u_next_[0 * Ntheta_ + jj] = avg;
         }
-
         //sample audio at center of membrane
-        curBuf[tt] = u_curr_[0]; // center point r=0, all theta the same
+        curBuf[tt] = 15.0f * u_curr_[0]; // center point r=0, all theta the same
+        // //advance time
+        // std::swap(u_curr_, u_next_);
+        // std::swap(u_prev_, u_curr_);
+   
+   
+        u_prev_ = u_curr_;
+        u_curr_ = u_next_; // just to be safe that u_curr_ is the current grid after swap
+   
 
-        //advance time
-        std::swap(u_curr_, u_next_);
-        std::swap(u_prev_, u_curr_);
+        if (std::isnan(u_next_[Nr_/2 * Ntheta_]) || std::isinf(u_next_[Nr_/2 * Ntheta_])) {
+            std::cerr << "BLOW UP at t=" << tt << std::endl;
+            break;
+        }
+
+ 
     }
     audioBuf_ = curBuf;
     // if (firstTime){
