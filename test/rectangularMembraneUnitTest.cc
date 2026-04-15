@@ -74,7 +74,7 @@ int main(int argc, char** argv){
         #if PORT_AUDIO
         audio.delay();
         #endif
-        sampsProc += BUFFER_SIZE - (int)OVERLAP; // Account for overlap
+        sampsProc += BUFFER_SIZE; // Account for overlap
     } 
 
     // Build wav file

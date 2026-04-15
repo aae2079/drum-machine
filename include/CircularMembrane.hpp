@@ -19,11 +19,14 @@ public:
     void cleanup();
 
     std::vector<float>& getCurrentGrid() { return u_curr_; }
-    std::vector<float>& getAudioBuffer() { return audioBuf_; }
+    std::vector<float>& getPhysicsBuffer() { return simBuf_; }
         
     
     void setInitialCondition();
     void Simulate();
+
+    void upSample();
+    void downSample();
 
 private:
     float radius_;   // meters
@@ -42,9 +45,7 @@ private:
     std::vector<float> u_prev_; // membrane state at previous time step
     std::vector<float> u_curr_; // membrane state at current time step
     std::vector<float> u_next_; // membrane state at next time step
-    
-    std::vector<float> audioBuf_; // audio buffer output
-    std::vector<float> histBuf_; // history buffer for overlap
+    std::vector<float> simBuf_; // buffer for current simulation chunk
     
     int firstTime; // flag for first time processing
 

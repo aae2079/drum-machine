@@ -10,7 +10,6 @@ RectangularMembrane::RectangularMembrane(int nx, int ny, float damp, float c, fl
     next_ = std::vector<float>(nx_ * ny_, 0.0f);
 
     audioBuf_ = std::vector<float>(BUFFER_SIZE, 0.0f);
-    histBuf_ = std::vector<float>(OVERLAP, 0.0f);
 
     /*
             nx
@@ -110,20 +109,5 @@ void RectangularMembrane::Simulate(){
         // Store displacments at a specific point for audio output
         //apply gain factor to increase volume of audio output
         curBuf[tt] = 15.0 * curr_[nx_ / 2 + (ny_ / 2) * nx_];
-    }
-
-    if (firstTime){
-        audioBuf_ = curBuf;
-        //copy curBuf to histBuf_ for next chunk
-        std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
-        firstTime = false;
-    } else {
-        // Append new chunk to audio buffer
-        std::copy(histBuf_.begin(), histBuf_.end(), audioBuf_.begin()); // Copy overlap from previous chunk
-        //copy remaining samples
-        std::copy(curBuf.begin(), curBuf.end() - (int)OVERLAP, audioBuf_.begin() + (int)OVERLAP);
-
-        //copy end of curBuf to histBuf_ for next chunk
-        std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
     }
 }

@@ -13,16 +13,15 @@ CircularMembrane::~CircularMembrane() {
     u_prev_.clear();
     u_curr_.clear();
     u_next_.clear();
-    audioBuf_.clear();
-    histBuf_.clear();
+    simBuf_.clear();
 }
-
 void CircularMembrane::init(float radius, float tension, float rho_density, unsigned int Nr, unsigned int Ntheta){
     radius_ = radius;
     tension_ = tension;
     rho_ = rho_density;
     Nr_ = Nr;
     Ntheta_ = Ntheta;
+
     
     dr_ = radius_ / (Nr_ - 1); // radial step size based on radius and number of radial samples
     dtheta_ = 2 * M_PI / Ntheta_; // angular step size based on number of angular samples
@@ -32,8 +31,7 @@ void CircularMembrane::init(float radius, float tension, float rho_density, unsi
     u_prev_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_curr_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_next_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
-    audioBuf_ = std::vector<float>(BUFFER_SIZE, 0.0f);
-    histBuf_ = std::vector<float>(OVERLAP, 0.0f);
+    simBuf_ = std::vector<float>(BUFFER_SIZE, 0.0f);
 
 
     // Dirichlet fixed outer boundary: all angular positions at r = Nr_-1
@@ -46,11 +44,10 @@ void CircularMembrane::init(float radius, float tension, float rho_density, unsi
 
 void CircularMembrane::cleanup() {
     // Clear vectors to free memory
-    u_prev_.clear();
-    u_curr_.clear();
+        u_prev_.clear();
+        u_curr_.clear();
     u_next_.clear();
-    audioBuf_.clear();
-    histBuf_.clear();
+    simBuf_.clear();
 }
 
 void CircularMembrane::setInitialCondition(){
@@ -129,17 +126,5 @@ void CircularMembrane::Simulate(){
 
  
     }
-    audioBuf_ = curBuf;
-    // if (firstTime){
-    //     audioBuf_ = curBuf;
-    //     //copy curBuf to histBuf_ for next chunk
-    //     std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
-    //     firstTime = 0;
-    // } else {
-    //     // For subsequent chunks, concatenate histBuf_ and curBuf to audioBuf_
-    //     std::copy(histBuf_.begin(), histBuf_.end(), audioBuf_.begin());
-    //     std::copy(curBuf.begin(), curBuf.end() - (int)OVERLAP, audioBuf_.begin() + (int)OVERLAP);
-    //     // Update histBuf_ for next chunk
-    //     std::copy(curBuf.end() - (int)OVERLAP, curBuf.end(), histBuf_.begin());
-    // }
+    simBuf_ = curBuf;
 }

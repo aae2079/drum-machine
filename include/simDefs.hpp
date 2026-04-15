@@ -2,8 +2,7 @@
 #define DRUM_MACHINE_SIM_DEFS_H
 
 #define CFL 0.2  // Courant-Friedrichs-Lewy condition for stability
-#define BUFFER_SIZE 1024
-#define OVERLAP 512 // Number of samples to overlap for streaming
+#define BUFFER_SIZE 512
 
 //Sets tonality of the drum sound, bigger membrane = lower tone, smaller membrane = higher tone
 //This will be useful when creating a drum set!

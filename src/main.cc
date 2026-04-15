@@ -95,7 +95,7 @@ int main(void) {
 				continue;
 			}
 			state.membrane.Simulate();
-			audio.pushChunk(state.membrane.getAudioBuffer().data(), state.membrane.getAudioBuffer().size());
+			//audio.pushChunk(state.membrane.getAudioBuffer().data(), state.membrane.getAudioBuffer().size());
 			
 			//add logger here eventually
 			
