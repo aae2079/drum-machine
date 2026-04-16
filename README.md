@@ -76,6 +76,11 @@ sudo apt-get install cmake libglfw3-dev portaudio19-dev libglm-dev
 ```bash
 git clone https://github.com/aae2079/drum-machine.git
 ```
+if you want to use DAVE Debugger by @maxmarsc for C++ Audio Debugging run submodule command below:
+```bash
+cd drum-machine/
+git submodule update --init --recursive
+```
 
 ### Build
 
