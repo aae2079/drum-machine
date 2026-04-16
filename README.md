@@ -78,7 +78,7 @@ git clone https://github.com/aae2079/drum-machine.git
 cd drum-machine/
 git submodule update --init --recursive
 ```
-Submodule update command will pull DAVE Debugger for GDB Audio Debugging by [maxmarsc](https://github.com)
+Submodule update command will pull DAVE Debugger for GDB Audio Debugging by [maxmarsc](https://github.com/maxmarsc)
 
 ### Build
 
