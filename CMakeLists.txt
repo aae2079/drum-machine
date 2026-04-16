@@ -10,7 +10,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
 endif()
-
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    add_subdirectory(external/dave)
+    target_link_libraries(drum-machine PRIVATE dave)
+    target_compile_definitions(drum-machine PRIVATE USE_DAVE_DEBUGGER=1)
+endif()
 # Set optimization levels for each build type
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")

@@ -1,0 +1,3 @@
+[submodule "external/dave"]
+	path = external/dave
+	url = https://github.com/maxmarsc/dave
