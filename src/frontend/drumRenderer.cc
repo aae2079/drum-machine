@@ -295,7 +295,6 @@ void DrumRenderer::updateCircularVertexData(const std::vector<GLfloat>& gridData
     // Update each ring vertex's y from the polar grid data
     // gridData is indexed as gridData[r * nAngular + a]
 
-    #pragma omp parallel for schedule(static) collapse(2)
     for (int r = 0; r < nRadial; r++) {
         for (int a = 0; a < nAngular; a++) {
             int vertexIdx  = 1 + r * nAngular + a;     // vertex index in vertices_

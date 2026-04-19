@@ -2,11 +2,14 @@
 #include <vector>
 #include <chrono>
 #include <thread>
+#include <cstdlib>
 #include "simDefs.hpp"
 #include "RectangularMembrane.hpp"
 #include "CircularMembrane.hpp"
 #include "drumRenderer.hpp"
 #include "audioEngine.hpp"
+
+float SIM_RATE; // global variable to hold the simulation sample rate, will be set by CircularMembrane init and used by main loop for upsampling
 
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
@@ -49,6 +52,13 @@ void mouseCB(GLFWwindow* window, int button, int action, int mods)
 }
 
 int main(void) {
+	// Make OpenMP worker threads sleep between parallel regions instead of spin-waiting.
+	// Must be set before the first OMP parallel region initializes the thread pool.
+	#if defined(_WIN32) || defined(_WIN64)
+	    _putenv("OMP_WAIT_POLICY=passive");
+	#else
+	setenv("OMP_WAIT_POLICY", "passive", 1);
+	#endif
 	std::string input;
     float sim_time = 2.0f;
     int num_samples = sim_time * SAMPLE_RATE;
@@ -65,6 +75,7 @@ int main(void) {
 	// Input handling
 	SimState state;
 	state.membrane.init((float)RADIUS, (float)TENSION, (float)MATERIAL_DENSITY, GRID_R, GRID_TH);
+	SIM_RATE = state.membrane.getSimRate();
 	glfwSetKeyCallback(drumGui.getWindow(), keyCB);
 	glfwSetWindowUserPointer(drumGui.getWindow(), &state);
 	glfwSetMouseButtonCallback(drumGui.getWindow(), mouseCB);
@@ -95,11 +106,16 @@ int main(void) {
 				continue;
 			}
 			state.membrane.Simulate();
-			audio.pushChunk(state.membrane.getAudioBuffer().data(), state.membrane.getAudioBuffer().size());
+			std::vector<float> audioBuf;
+			//this decouples the physics simulation rate from the audio output rate by resampling the current simBuf_ chunk to exactly BUFFER_SIZE samples, which is what pushChunk expects
+			audioBuf = state.membrane.sampleInterp(state.membrane.getPhysicsBuffer().data(),
+			                                   state.membrane.getPhysicsBuffer().size(),
+			                                   SIM_RATE, SAMPLE_RATE);
+			audio.pushChunk(audioBuf.data(), audioBuf.size());
 			
 			//add logger here eventually
 			
-			//audio.delay();
+			audio.delay();
 			state.sampsProc += BUFFER_SIZE;
 		}
 			
