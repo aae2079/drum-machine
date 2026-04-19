@@ -20,13 +20,13 @@ public:
 
     std::vector<float>& getCurrentGrid() { return u_curr_; }
     std::vector<float>& getPhysicsBuffer() { return simBuf_; }
+    float& getSimRate() { return simRate_; }
         
     
     void setInitialCondition();
     void Simulate();
 
-    void upSample();
-    void downSample();
+    std::vector<float> sampleInterp(float *in, int inLen, float inFs, float outFs);
 
 private:
     float radius_;   // meters
@@ -36,6 +36,9 @@ private:
     float dt_;      // time step s
     float dr_;      // radial step size m
     float dtheta_;  // angular step size radians
+    float simRate_; // simulation sample rate (Hz)
+
+    int physSteps_; // number of physics steps to run per audio buffer (derived from simRate_ and SAMPLE_RATE)
 
 
     // Discretization / storage placeholders
