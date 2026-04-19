@@ -24,7 +24,6 @@ void CircularMembrane::init(float radius, float tension, float rho_density, unsi
     Nr_ = Nr;
     Ntheta_ = Ntheta;
 
-    
     dr_ = radius_ / (Nr_ - 1); // radial step size based on radius and number of radial samples
     dtheta_ = 2 * M_PI / Ntheta_; // angular step size based on number of angular samples
     c_ = std::sqrt(tension_ / rho_);       // wave speed m/s
@@ -48,8 +47,8 @@ void CircularMembrane::init(float radius, float tension, float rho_density, unsi
 
 void CircularMembrane::cleanup() {
     // Clear vectors to free memory
-        u_prev_.clear();
-        u_curr_.clear();
+    u_prev_.clear();
+    u_curr_.clear();
     u_next_.clear();
     simBuf_.clear();
 }
