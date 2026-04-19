@@ -23,19 +23,18 @@ void CircularMembrane::init(float radius, float tension, float rho_density, unsi
     rho_ = rho_density;
     Nr_ = Nr;
     Ntheta_ = Ntheta;
-
     dr_ = radius_ / (Nr_ - 1); // radial step size based on radius and number of radial samples
     dtheta_ = 2 * M_PI / Ntheta_; // angular step size based on number of angular samples
     c_ = std::sqrt(tension_ / rho_);       // wave speed m/s
     dt_ = CFL * dr_ / c_; // time step based on CFL condition for stability
     simRate_ = 1.0f / dt_; // simulation sample rate in Hz
+    
     // Initialize state vectors
     u_prev_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_curr_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_next_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     physSteps_ = std::max(1, (int)std::ceil((double)BUFFER_SIZE * simRate_ / SAMPLE_RATE));
     simBuf_ = std::vector<float>(physSteps_, 0.0f);
-
 
     // Dirichlet fixed outer boundary: all angular positions at r = Nr_-1
     for (int jj = 0; jj < Ntheta_; jj++) {
@@ -71,7 +70,7 @@ void CircularMembrane::setInitialCondition(){
 
 void CircularMembrane::Simulate(){
     // Run exactly enough physics steps to cover one audio buffer's worth of time.
-    // upSample() on simBuf_ will then produce exactly BUFFER_SIZE audio samples.
+    // sampleInterp() on simBuf_ will then produce exactly BUFFER_SIZE audio samples.
     std::vector<float> curBuf(physSteps_, 0.0f);
     for(int tt = 0; tt < physSteps_; tt++){
         // --- spatial update ----
