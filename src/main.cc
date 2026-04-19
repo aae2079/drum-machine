@@ -54,7 +54,11 @@ void mouseCB(GLFWwindow* window, int button, int action, int mods)
 int main(void) {
 	// Make OpenMP worker threads sleep between parallel regions instead of spin-waiting.
 	// Must be set before the first OMP parallel region initializes the thread pool.
+	#if defined(_WIN32) || defined(_WIN64)
+	    _putenv("OMP_WAIT_POLICY=passive");
+	#else
 	setenv("OMP_WAIT_POLICY", "passive", 1);
+	#endif
 	std::string input;
     float sim_time = 2.0f;
     int num_samples = sim_time * SAMPLE_RATE;

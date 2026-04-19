@@ -73,7 +73,7 @@ void AudioEngine::pushChunk(const float* buffer, size_t numSamples) {
     cur.audio_buffer.assign(buffer, buffer + numSamples);
     cur.full = 1;
     while (ringBuf[fill_ix].full != 0) {
-        Pa_Sleep(1); // Wait for the callback to consume the slot
+        Pa_Sleep(_bufferSize * 1000 / _sampleRate); // sleep one callback period
     }
     ringBuf[fill_ix] = cur; // Copy current buffer to ring buffer
     fill_ix = (fill_ix + 1) % NUM_FRAMES;
