@@ -42,8 +42,39 @@ void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 
 void mouseCB(GLFWwindow* window, int button, int action, int mods)
 {
-	// Placeholder for mouse input handling if needed in the future
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        double x_pos, y_pos;
+        glfwGetCursorPos(window, &x_pos, &y_pos);
+
+        // Convert screen coords to normalized coordinates
+        float ndcX = (float)(2.0 * x_pos / WIDTH  - 1.0);
+        float ndcY = (float)(1.0 - 2.0 * y_pos / HEIGHT);
+
+        // Reconstruct the same matrices used in the render loop
+        glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 view  = glm::rotate(
+                              glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.5f)),
+                              glm::radians(tilt), glm::vec3(1.0f, 0.0f, 0.0f));
+        glm::mat4 proj  = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
+
+        // Unproject NDC point into a view-space ray direction, then into world space
+        glm::vec4 rayView = glm::inverse(proj) * glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
+        rayView = glm::vec4(rayView.x, rayView.y, -1.0f, 0.0f); // direction vector
+
+        glm::mat4 invView   = glm::inverse(view);
+        glm::vec3 rayDir    = glm::normalize(glm::vec3(invView * rayView));
+        glm::vec3 rayOrigin = glm::vec3(invView * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+        // Intersect ray with the membrane plane (y=0 in world space).
+        // Model only rotates around Y so the XZ plane is preserved in world space.
+        if (std::abs(rayDir.y) < 1e-6f) return;
+        float t = -rayOrigin.y / rayDir.y;
+        if (t < 0.0f) return;
+
+        // Transform the hit point into model space and check it is inside the membrane (radius = 1.0)
+        glm::vec3 hitModel = glm::vec3(glm::inverse(model) * glm::vec4(rayOrigin + t * rayDir, 1.0f));
+        if (hitModel.x * hitModel.x + hitModel.z * hitModel.z > 1.0f) return;
+
         auto* state = static_cast<SimState*>(glfwGetWindowUserPointer(window));
         state->membrane.setInitialCondition();
         state->sampsProc = 0;
