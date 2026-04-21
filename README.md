@@ -24,29 +24,34 @@ This drum machine simulates the vibration of a 2D rectangular membrane (like a d
 ```
 drum-machine/
 ├── src/
-│   ├── main.cc                      # Main application loop
+│   ├── main.cc                              # Main application loop
 │   ├── backend/
-│   │   ├── RectangularMembrane.cc   # Physics solver
-|   |   ├── CircularMembrane.cc 
-│   │   └── audioEngine.cc           # Audio I/O with PortAudio
-│   └── frontend/
-│       ├── drumRenderer.cc          # OpenGL rendering
-│       ├── default.vert             # Vertex shader
-│       └── default.frag             # Fragment shader
+│   │   ├── physics/
+│   │   │   └── head/
+│   │   │       ├── CircularMembrane.cc      # Polar FDM physics solver
+│   │   │       └── RectangularMembrane.cc   # Cartesian FDM solver (legacy/tests)
+│   │   └── audio/
+│   │       └── audioEngine.cc              # Audio I/O with PortAudio
+│   ├── frontend/
+│   │   ├── drumRenderer.cc                 # OpenGL rendering
+│   │   ├── default.vert                    # Vertex shader
+│   │   └── default.frag                    # Fragment shader
+│   └── 3rdparty/
+│       └── glad.c                          # GLAD OpenGL loader
 ├── include/
+│   ├── CircularMembrane.hpp
 │   ├── RectangularMembrane.hpp
 │   ├── audioEngine.hpp
 │   ├── drumRenderer.hpp
-│   ├── audioDefs.hpp                # Audio configuration
-│   ├── simDefs.hpp                  # Simulation parameters
-│   └── wav.hpp                      # WAV file format
-├── dependencies/                    # Third-party headers (GLAD, KHR)
+│   ├── audioDefs.hpp                        # Audio configuration
+│   ├── simDefs.hpp                          # Simulation parameters
+│   ├── strikeDefs.hpp                       # Strike parameters
+│   └── wav.hpp                              # WAV file format
+├── dependencies/                            # Third-party headers (GLAD, KHR)
 ├── test/
-│   ├── rectangularMembraneUnitTest.cc
-│   └── Makefile
+│   └── rectangularMembraneUnitTest.cc
 ├── CMakeLists.txt
-├── clean_build.sh                   # Build script
-└── drum_machine_plan.md             # Development roadmap
+└── clean_build.sh                           # Build script
 ```
 
 ## Building & Running
@@ -142,7 +147,7 @@ Tune the drum sound by editing `include/simDefs.hpp`:
 #define RADIUS 0.3f      // meters — physical drum head size
 ```
 
-Strike parameters are set in `CircularMembrane::setInitialCondition()` in `src/backend/CircularMembrane.cc`:
+Strike parameters are set in `CircularMembrane::setInitialCondition()` in `src/backend/physics/head/CircularMembrane.cc`:
 
 ```cpp
 float amp = 0.1f;   // Initial displacement amplitude

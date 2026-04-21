@@ -38,9 +38,9 @@ The test binary links `RectangularMembrane.cc` and `audioEngine.cc` directly (no
 
 The application is a real-time physics-based drum synthesizer with three decoupled components:
 
-**Physics backend** (`src/backend/`): Solves the 2D wave equation using explicit finite differences. `CircularMembrane.cc` is the current solver (polar coordinates). `RectangularMembrane.cc` is the legacy Cartesian solver, still used in unit tests. Both maintain three time-step grids (`prev_`, `curr_`, `next_`) and advance via swap. Stability is enforced via the CFL condition (set to 0.2 in `include/simDefs.hpp`).
+**Physics backend** (`src/backend/physics/head/`): Solves the 2D wave equation using explicit finite differences. `CircularMembrane.cc` is the current solver (polar coordinates). `RectangularMembrane.cc` is the legacy Cartesian solver, still used in unit tests. Both maintain three time-step grids (`prev_`, `curr_`, `next_`) and advance via swap. Stability is enforced via the CFL condition (set to 0.2 in `include/simDefs.hpp`).
 
-**Audio engine** (`src/backend/audioEngine.cc`): PortAudio wrapper using a ring buffer (producer-consumer) to decouple the main loop from the audio callback. The main thread pushes 2048-sample chunks; the callback pulls samples. Physics runs at its own timestep rate; `sampleInterp()` resamples to 24 kHz PCM before pushing to the ring buffer.
+**Audio engine** (`src/backend/audio/audioEngine.cc`): PortAudio wrapper using a ring buffer (producer-consumer) to decouple the main loop from the audio callback. The main thread pushes 2048-sample chunks; the callback pulls samples. Physics runs at its own timestep rate; `sampleInterp()` resamples to 24 kHz PCM before pushing to the ring buffer.
 
 **Renderer** (`src/frontend/drumRenderer.cc`): OpenGL 3.3 Core + GLFW. Renders the membrane as a wireframe mesh. Arrow keys control rotation/tilt; mouse clicks trigger a strike at the click position.
 

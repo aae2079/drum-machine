@@ -32,9 +32,9 @@ pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 set(SOURCES
     src/main.cc
     src/frontend/drumRenderer.cc
-    src/backend/CircularMembrane.cc
-    src/backend/RectangularMembrane.cc
-    src/backend/audioEngine.cc
+    src/backend/physics/head/CircularMembrane.cc
+    src/backend/physics/head/RectangularMembrane.cc
+    src/backend/audio/audioEngine.cc
     src/3rdparty/glad.c
 )
 
@@ -99,8 +99,8 @@ enable_testing()
 
 set(TEST_SOURCES
     test/rectangularMembraneUnitTest.cc
-    src/backend/RectangularMembrane.cc
-    src/backend/audioEngine.cc
+    src/backend/physics/head/RectangularMembrane.cc
+    src/backend/audio/audioEngine.cc
 )
 
 add_executable(test_rectangular_membrane ${TEST_SOURCES})
