@@ -52,16 +52,24 @@ void CircularMembrane::cleanup() {
     simBuf_.clear();
 }
 
-void CircularMembrane::setInitialCondition(){
+void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
     // Simple Gaussian strike/pluck at center
-    float amp = 0.1f;
 
+    int rStrike = (int)(strike->rPos * Nr_); // convert normalized to actual radial position
     #pragma omp parallel for schedule(static) collapse(2)
     for (int ir = 1; ir < Nr_ - 1; ir++) {
         for (int itheta = 0; itheta < Ntheta_; itheta++) {
+            float theta = 2*M_PI *itheta / Ntheta_;
+
+            //find radial distance to strike radius
+            float r_dist = (float)abs(ir - rStrike) / Nr_;
+            //find angular distance to strike angle, accounting for wraparound
+            float angular_dist = theta - strike->thetaPos;
+            while(angular_dist > M_PI) angular_dist -= 2*M_PI;
+            while(angular_dist < -M_PI) angular_dist += 2*M_PI; 
+            
             // Gaussian centered at r=0, decaying outward radially
-            double r_norm = (double)ir / Nr_; // normalized radius 0..1
-            float val = (float)(amp * exp(-0.01 * ir * ir));
+            float val = (float)(strike->amplitude * exp(-0.01 * ( r_dist * r_dist + angular_dist * angular_dist)));
             u_curr_[ir * Ntheta_ + itheta] = val;
             u_prev_[ir * Ntheta_ + itheta] = val; 
         }

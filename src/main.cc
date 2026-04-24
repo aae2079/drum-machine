@@ -8,6 +8,7 @@
 #include "CircularMembrane.hpp"
 #include "drumRenderer.hpp"
 #include "audioEngine.hpp"
+#include "strikeDefs.hpp"
 
 float SIM_RATE; // global variable to hold the simulation sample rate, will be set by CircularMembrane init and used by main loop for upsampling
 
@@ -25,6 +26,7 @@ typedef struct {
     int sampsProc = 0;
 }SimState;
 
+StrikeDefs strike; //global for now
 
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -76,7 +78,7 @@ void mouseCB(GLFWwindow* window, int button, int action, int mods)
         if (hitModel.x * hitModel.x + hitModel.z * hitModel.z > 1.0f) return;
 
         auto* state = static_cast<SimState*>(glfwGetWindowUserPointer(window));
-        state->membrane.setInitialCondition();
+        state->membrane.setInitialCondition(&strike);
         state->sampsProc = 0;
         state->simRunning = true;
     }
@@ -93,6 +95,11 @@ int main(void) {
 	std::string input;
     float sim_time = 2.0f;
     int num_samples = sim_time * SAMPLE_RATE;
+
+	//center strike for testing
+	strike.amplitude = 0.8f;
+	strike.rPos = 0.0f;
+	strike.thetaPos = 0.0f;
 
 	// Initialize audio engine
 	AudioEngine audio;

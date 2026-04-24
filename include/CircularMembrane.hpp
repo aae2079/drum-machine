@@ -7,6 +7,7 @@
 #include <cmath>
 #include "simDefs.hpp"
 #include "audioDefs.hpp"
+#include "strikeDefs.hpp"
 
 
 class CircularMembrane {
@@ -23,7 +24,7 @@ public:
     float& getSimRate() { return simRate_; }
         
     
-    void setInitialCondition();
+    void setInitialCondition(const StrikeDefs* strike);
     void Simulate();
 
     std::vector<float> sampleInterp(float *in, int inLen, float inFs, float outFs);
