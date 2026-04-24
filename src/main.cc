@@ -8,6 +8,7 @@
 #include "CircularMembrane.hpp"
 #include "drumRenderer.hpp"
 #include "audioEngine.hpp"
+#include "audioDSP.hpp"
 #include "strikeDefs.hpp"
 
 float SIM_RATE; // global variable to hold the simulation sample rate, will be set by CircularMembrane init and used by main loop for upsampling
@@ -105,6 +106,9 @@ int main(void) {
 	AudioEngine audio;
 	audio.start();
 
+	// Init DSP toolbox
+	AudioDSP_Toolbox dspToolbox;
+
 	// Initialize rendering engine
    	DrumRenderer drumGui(WIDTH,HEIGHT,"Drum Machine");
    	if(!drumGui.init()){
@@ -146,7 +150,7 @@ int main(void) {
 			state.membrane.Simulate();
 			std::vector<float> audioBuf;
 			//this decouples the physics simulation rate from the audio output rate by resampling the current simBuf_ chunk to exactly BUFFER_SIZE samples, which is what pushChunk expects
-			audioBuf = state.membrane.sampleInterp(state.membrane.getPhysicsBuffer().data(),
+			audioBuf = dspToolbox.sampleInterp(state.membrane.getPhysicsBuffer().data(),
 			                                   state.membrane.getPhysicsBuffer().size(),
 			                                   SIM_RATE, SAMPLE_RATE);
 			audio.pushChunk(audioBuf.data(), audioBuf.size());

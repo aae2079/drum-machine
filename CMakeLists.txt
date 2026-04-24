@@ -34,7 +34,8 @@ set(SOURCES
     src/frontend/drumRenderer.cc
     src/backend/physics/head/CircularMembrane.cc
     src/backend/physics/head/RectangularMembrane.cc
-    src/backend/audio/audioEngine.cc
+    src/backend/audio/engine/audioEngine.cc
+    src/backend/audio/dsp/audioDSP.cc
     src/3rdparty/glad.c
 )
 
@@ -43,6 +44,7 @@ set(HEADERS
     include/RectangularMembrane.hpp
     include/Surface.hpp
     include/audioDefs.hpp
+    include/audioDSP.hpp
     include/strikeDefs.hpp
     include/drumRenderer.hpp
     dependencies/glad/glad.h
@@ -100,7 +102,7 @@ enable_testing()
 set(TEST_SOURCES
     test/rectangularMembraneUnitTest.cc
     src/backend/physics/head/RectangularMembrane.cc
-    src/backend/audio/audioEngine.cc
+    src/backend/audio/engine/audioEngine.cc
 )
 
 add_executable(test_rectangular_membrane ${TEST_SOURCES})

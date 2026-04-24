@@ -27,7 +27,6 @@ public:
     void setInitialCondition(const StrikeDefs* strike);
     void Simulate();
 
-    std::vector<float> sampleInterp(float *in, int inLen, float inFs, float outFs);
 
 private:
     float radius_;   // meters
