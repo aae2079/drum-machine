@@ -53,25 +53,22 @@ void CircularMembrane::cleanup() {
 }
 
 void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
-    // Simple Gaussian strike/pluck at center
+    // Convert strike position to index-space Cartesian coords so r and theta
+    // distances are in the same units before computing the Gaussian.
+    float r_s = strike->rPos * (Nr_ - 1);
+    float xs  = r_s * std::cos(strike->thetaPos);
+    float zs  = r_s * std::sin(strike->thetaPos);
 
-    int rStrike = (int)(strike->rPos * Nr_); // convert normalized to actual radial position
     #pragma omp parallel for schedule(static) collapse(2)
     for (int ir = 1; ir < Nr_ - 1; ir++) {
         for (int itheta = 0; itheta < Ntheta_; itheta++) {
-            float theta = 2*M_PI *itheta / Ntheta_;
-
-            //find radial distance to strike radius
-            float r_dist = (float)abs(ir - rStrike) / Nr_;
-            //find angular distance to strike angle, accounting for wraparound
-            float angular_dist = theta - strike->thetaPos;
-            while(angular_dist > M_PI) angular_dist -= 2*M_PI;
-            while(angular_dist < -M_PI) angular_dist += 2*M_PI; 
-
-            // Gaussian centered at r=0, decaying outward radially
-            float val = (float)(strike->amplitude * exp(-0.01 * ( r_dist * r_dist + angular_dist * angular_dist)));
+            float xi    = ir * std::cos(itheta * dtheta_);
+            float zi    = ir * std::sin(itheta * dtheta_);
+            float dist2 = (xi - xs)*(xi - xs) + (zi - zs)*(zi - zs);
+            // sigma=0.08: ~14% amplitude at 5 ring-units, ~0% at 10 ring-units
+            float val   = strike->amplitude * std::exp(-0.08f * dist2);
             u_curr_[ir * Ntheta_ + itheta] = val;
-            u_prev_[ir * Ntheta_ + itheta] = val; 
+            u_prev_[ir * Ntheta_ + itheta] = val;
         }
     }
 }
@@ -97,8 +94,14 @@ void CircularMembrane::Simulate(){
                 float term_r = du_dr / r;
 
                 // (1/r^2) * d2u/dtheta2
-                float d2u_dtheta2 = (u_curr_[ii * Ntheta_ + j_plus] - 2.0 * u_curr_[ii * Ntheta_ + jj] + u_curr_[ii * Ntheta_ + j_minus]) / (dtheta_ * dtheta_);
-                float term_theta = d2u_dtheta2 / (r * r);
+                // Skip angular term where 1/r² makes the Courant number > 1.
+                // Stability requires: ii * dtheta_ >= CFL  (derived from c*dt/(ir*dr*dtheta) <= 1).
+                // Near-origin rings are effectively symmetric from the origin averaging condition.
+                float term_theta = 0.0f;
+                if ((float)ii * dtheta_ >= CFL) {
+                    float d2u_dtheta2 = (u_curr_[ii * Ntheta_ + j_plus] - 2.0 * u_curr_[ii * Ntheta_ + jj] + u_curr_[ii * Ntheta_ + j_minus]) / (dtheta_ * dtheta_);
+                    term_theta = d2u_dtheta2 / (r * r);
+                }
                 float laplacian = d2u_dr2 + term_r + term_theta;
 
                 u_next_[ii * Ntheta_ + jj] = 2.0f * u_curr_[ii * Ntheta_ + jj] - u_prev_[ii * Ntheta_ + jj] + (c_ * c_ * dt_ * dt_) * laplacian;

@@ -98,9 +98,9 @@ int main(void) {
     int num_samples = sim_time * SAMPLE_RATE;
 
 	//center strike for testing
-	strike.amplitude = 0.8f;
-	strike.rPos = 0.0f;
-	strike.thetaPos = 0.0f;
+	strike.amplitude = 1.0f;
+	strike.rPos = 0.9999f;
+	strike.thetaPos = (2.0*M_PI) / 3.0f ;
 
 	// Initialize audio engine
 	AudioEngine audio;
