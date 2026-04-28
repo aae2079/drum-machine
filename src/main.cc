@@ -16,7 +16,8 @@ float SIM_RATE; // global variable to hold the simulation sample rate, will be s
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
 int firstTime = 1;
-bool simRunning = false;
+bool simRunning = false; //sim doesnt run on startup, waits for user to click membrane to strike and start simulating
+bool runAudio = true;
 // Variables that help the rotation of the grid
 float rotation = -30.0f;
 float tilt = 15.0f;
@@ -26,8 +27,6 @@ typedef struct {
     int simRunning = 0;
     int sampsProc = 0;
 }SimState;
-
-
 
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -41,6 +40,9 @@ void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 		tilt += 1.0f;
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
 		tilt -= 1.0f;
+	if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
+		runAudio = !runAudio;
+	
 }
 
 void mouseCB(GLFWwindow* window, int button, int action, int mods)
@@ -93,6 +95,14 @@ void mouseCB(GLFWwindow* window, int button, int action, int mods)
         state->simRunning = true;
     }
 }
+void appSettings(){
+	std::cout << std::endl;
+	std::cout << "--------------- Welcome to the Drum Machine! ----------------" << std::endl;
+	std::cout << "Controls:" << std::endl;
+	std::cout << "  Click membrane to strike and start simulation" << std::endl;
+	std::cout << "  Arrow keys (↑↓ & ←→) to rotate/tilt view" << std::endl;
+	std::cout << "  M key to toggle audio on/off" << std::endl;
+}
 
 int main(void) {
 	// Make OpenMP worker threads sleep between parallel regions instead of spin-waiting.
@@ -118,6 +128,9 @@ int main(void) {
    	if(!drumGui.init()){
 		std::cerr << "Failed to initialize Drum Machine" << std::endl;
    	}
+
+	appSettings();
+
 	// Input handling
 	SimState state;
 	state.membrane.init((float)RADIUS, (float)TENSION, (float)MATERIAL_DENSITY, GRID_R, GRID_TH);
@@ -157,11 +170,11 @@ int main(void) {
 			audioBuf = dspToolbox.sampleInterp(state.membrane.getPhysicsBuffer().data(),
 			                                   state.membrane.getPhysicsBuffer().size(),
 			                                   SIM_RATE, SAMPLE_RATE);
-			audio.pushChunk(audioBuf.data(), audioBuf.size());
-			
-			//add logger here eventually
-			
-			audio.delay();
+			if (runAudio){
+				audio.pushChunk(audioBuf.data(), audioBuf.size());
+				audio.delay();
+			}
+
 			state.sampsProc += BUFFER_SIZE;
 		}
 			
