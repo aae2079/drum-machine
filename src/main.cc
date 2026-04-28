@@ -27,7 +27,7 @@ typedef struct {
     int sampsProc = 0;
 }SimState;
 
-StrikeDefs strike; //global for now
+
 
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -76,8 +76,17 @@ void mouseCB(GLFWwindow* window, int button, int action, int mods)
 
         // Transform the hit point into model space and check it is inside the membrane (radius = 1.0)
         glm::vec3 hitModel = glm::vec3(glm::inverse(model) * glm::vec4(rayOrigin + t * rayDir, 1.0f));
-        if (hitModel.x * hitModel.x + hitModel.z * hitModel.z > 1.0f) return;
+        float radius = hitModel.x * hitModel.x + hitModel.z * hitModel.z;
+		float theta = std::atan2(hitModel.z, hitModel.x);
+		if (theta < 0.0f) theta += 2.0f * M_PI; // atan2 returns [-pi, pi], convert to [0, 2pi]
 
+		if (radius > 1.0f) return;
+
+		StrikeDefs strike;
+		strike.amplitude = 1.0f;
+		strike.rPos = radius;
+		strike.thetaPos = theta;
+		
         auto* state = static_cast<SimState*>(glfwGetWindowUserPointer(window));
         state->membrane.setInitialCondition(&strike);
         state->sampsProc = 0;
@@ -96,11 +105,6 @@ int main(void) {
 	std::string input;
     float sim_time = 2.0f;
     int num_samples = sim_time * SAMPLE_RATE;
-
-	//center strike for testing
-	strike.amplitude = 1.0f;
-	strike.rPos = 0.9999f;
-	strike.thetaPos = (2.0*M_PI) / 3.0f ;
 
 	// Initialize audio engine
 	AudioEngine audio;

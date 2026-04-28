@@ -52,6 +52,7 @@ void CircularMembrane::cleanup() {
     simBuf_.clear();
 }
 
+
 void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
     // Convert strike position to index-space Cartesian coords so r and theta
     // distances are in the same units before computing the Gaussian.
