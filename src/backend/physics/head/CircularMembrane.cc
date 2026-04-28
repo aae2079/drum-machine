@@ -52,18 +52,24 @@ void CircularMembrane::cleanup() {
     simBuf_.clear();
 }
 
-void CircularMembrane::setInitialCondition(){
-    // Simple Gaussian strike/pluck at center
-    float amp = 0.1f;
+
+void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
+    // Convert strike position to index-space Cartesian coords so r and theta
+    // distances are in the same units before computing the Gaussian.
+    float r_s = strike->rPos * (Nr_ - 1);
+    float xs  = r_s * std::cos(strike->thetaPos);
+    float zs  = r_s * std::sin(strike->thetaPos);
 
     #pragma omp parallel for schedule(static) collapse(2)
     for (int ir = 1; ir < Nr_ - 1; ir++) {
         for (int itheta = 0; itheta < Ntheta_; itheta++) {
-            // Gaussian centered at r=0, decaying outward radially
-            double r_norm = (double)ir / Nr_; // normalized radius 0..1
-            float val = (float)(amp * exp(-0.01 * ir * ir));
+            float xi    = ir * std::cos(itheta * dtheta_);
+            float zi    = ir * std::sin(itheta * dtheta_);
+            float dist2 = (xi - xs)*(xi - xs) + (zi - zs)*(zi - zs);
+            // sigma=0.08: ~14% amplitude at 5 ring-units, ~0% at 10 ring-units
+            float val   = strike->amplitude * std::exp(-0.08f * dist2);
             u_curr_[ir * Ntheta_ + itheta] = val;
-            u_prev_[ir * Ntheta_ + itheta] = val; 
+            u_prev_[ir * Ntheta_ + itheta] = val;
         }
     }
 }
@@ -89,8 +95,14 @@ void CircularMembrane::Simulate(){
                 float term_r = du_dr / r;
 
                 // (1/r^2) * d2u/dtheta2
-                float d2u_dtheta2 = (u_curr_[ii * Ntheta_ + j_plus] - 2.0 * u_curr_[ii * Ntheta_ + jj] + u_curr_[ii * Ntheta_ + j_minus]) / (dtheta_ * dtheta_);
-                float term_theta = d2u_dtheta2 / (r * r);
+                // Skip angular term where 1/r² makes the Courant number > 1.
+                // Stability requires: ii * dtheta_ >= CFL  (derived from c*dt/(ir*dr*dtheta) <= 1).
+                // Near-origin rings are effectively symmetric from the origin averaging condition.
+                float term_theta = 0.0f;
+                if ((float)ii * dtheta_ >= CFL) {
+                    float d2u_dtheta2 = (u_curr_[ii * Ntheta_ + j_plus] - 2.0 * u_curr_[ii * Ntheta_ + jj] + u_curr_[ii * Ntheta_ + j_minus]) / (dtheta_ * dtheta_);
+                    term_theta = d2u_dtheta2 / (r * r);
+                }
                 float laplacian = d2u_dr2 + term_r + term_theta;
 
                 u_next_[ii * Ntheta_ + jj] = 2.0f * u_curr_[ii * Ntheta_ + jj] - u_prev_[ii * Ntheta_ + jj] + (c_ * c_ * dt_ * dt_) * laplacian;
@@ -128,30 +140,4 @@ void CircularMembrane::Simulate(){
     simBuf_ = std::move(curBuf);
 }
 
-std::vector<float> CircularMembrane::sampleInterp(float *in, int inLen, float inFs, float outFs){
-    if (inLen <= 0 || inFs <= 0.0f || outFs <= 0.0f) return {};
 
-    // Output length = ceil(inLen * outFs / inFs).
-    // Caller is responsible for allocating at least that many floats.
-    int outLen = (int)std::ceil((double)inLen * outFs / inFs);
-    std::vector<float> out(outLen, 0.0f);
-
-    // Step size in input-sample coordinates per output sample.
-    // < 1.0 when upsampling (outFs > inFs), > 1.0 when downsampling.
-    double step = (double)inFs / outFs;
-
-    for (int n = 0; n < outLen; n++) {
-        double pos = n * step;          // fractional index into in[]
-        int    i0  = (int)pos;          // left neighbour
-        int    i1  = i0 + 1;            // right neighbour
-        double alpha = pos - i0;        // weight for i1, in [0, 1)
-
-        // Clamp so we never read past the end of the input.
-        i0 = std::min(i0, inLen - 1);
-        i1 = std::min(i1, inLen - 1);
-
-        out[n] = (float)((1.0 - alpha) * in[i0] + alpha * in[i1]);
-    }
-
-    return out;
-}

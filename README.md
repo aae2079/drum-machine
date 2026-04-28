@@ -24,29 +24,34 @@ This drum machine simulates the vibration of a 2D rectangular membrane (like a d
 ```
 drum-machine/
 ├── src/
-│   ├── main.cc                      # Main application loop
+│   ├── main.cc                              # Main application loop
 │   ├── backend/
-│   │   ├── RectangularMembrane.cc   # Physics solver
-|   |   ├── CircularMembrane.cc 
-│   │   └── audioEngine.cc           # Audio I/O with PortAudio
-│   └── frontend/
-│       ├── drumRenderer.cc          # OpenGL rendering
-│       ├── default.vert             # Vertex shader
-│       └── default.frag             # Fragment shader
+│   │   ├── physics/
+│   │   │   └── head/
+│   │   │       ├── CircularMembrane.cc      # Polar FDM physics solver
+│   │   │       └── RectangularMembrane.cc   # Cartesian FDM solver (legacy/tests)
+│   │   └── audio/
+│   │       └── audioEngine.cc              # Audio I/O with PortAudio
+│   ├── frontend/
+│   │   ├── drumRenderer.cc                 # OpenGL rendering
+│   │   ├── default.vert                    # Vertex shader
+│   │   └── default.frag                    # Fragment shader
+│   └── 3rdparty/
+│       └── glad.c                          # GLAD OpenGL loader
 ├── include/
+│   ├── CircularMembrane.hpp
 │   ├── RectangularMembrane.hpp
 │   ├── audioEngine.hpp
 │   ├── drumRenderer.hpp
-│   ├── audioDefs.hpp                # Audio configuration
-│   ├── simDefs.hpp                  # Simulation parameters
-│   └── wav.hpp                      # WAV file format
-├── dependencies/                    # Third-party headers (GLAD, KHR)
+│   ├── audioDefs.hpp                        # Audio configuration
+│   ├── simDefs.hpp                          # Simulation parameters
+│   ├── strikeDefs.hpp                       # Strike parameters
+│   └── wav.hpp                              # WAV file format
+├── dependencies/                            # Third-party headers (GLAD, KHR)
 ├── test/
-│   ├── rectangularMembraneUnitTest.cc
-│   └── Makefile
+│   └── rectangularMembraneUnitTest.cc
 ├── CMakeLists.txt
-├── clean_build.sh                   # Build script
-└── drum_machine_plan.md             # Development roadmap
+└── clean_build.sh                           # Build script
 ```
 
 ## Building & Running
@@ -95,13 +100,15 @@ cmake --build .
 
 ```bash
 cd build/bin/
+mdkir shaders/
+ln -sf ../../src/frontend/default/* . 
 ./drum-machine
 ```
 
 ## Controls
 
 ### Simulation
-- **S** — Start/stop simulation
+- **Mouse Click (↖)** — Runs simulation on membrane
 - **ESC** — Exit application
 
 ### Visualization
@@ -115,46 +122,57 @@ Edit `include/simDefs.hpp` to customize:
 ```cpp
 #define CFL 0.25              // Courant stability parameter (< 0.5)
 #define BUFFER_SIZE 2048      // Audio buffer chunk size
-#define OVERLAP 512           // Overlap between chunks for streaming
-#define GRID_R 100            // Membrane grid width (affects tone)
+#define GRID_R 70            // Membrane grid width (affects tone)
 #define GRID_TH 100            // Membrane grid height (affects tone)
 ```
 
 Edit `include/audioDefs.hpp` for audio settings:
 
 ```cpp
-#define SAMPLE_RATE 48000     // Audio sample rate (Hz)
+#define SAMPLE_RATE 24000     // Audio sample rate (Hz)
 #define NUM_CHANNELS 1        // Mono output
 #define BIT_DEPTH 16          // 16-bit audio
 ```
 
 ## Physics Parameters
 
-In `src/backend/RectangularMembrane.cc`, adjust these to change drum sound:
+Tune the drum sound by editing `include/simDefs.hpp`:
 
 ```cpp
-float amp = 0.1;              // Initial displacement amplitude
-float alpha = 0.01;           // Gaussian width (strike localization)
-float damp = 10.0;            // Damping coefficient (higher = faster decay)
-float c = 1.0;                // Wave speed (higher = higher pitch)
+#define CFL 0.2          // Courant stability parameter — controls timestep (must satisfy CFL² < 0.5)
+#define GRID_R 50        // Radial rings — larger = lower pitch
+#define GRID_TH 75       // Angular samples per ring
+#define TENSION 150.0f   // N/m — tighter = higher pitch, faster decay
+#define MATERIAL_DENSITY (1400.0f * MEMBRANE_THICKNESS)  // kg/m², derived from Mylar properties
+#define RADIUS 0.3f      // meters — physical drum head size
+```
+
+Strike parameters are set in `CircularMembrane::setInitialCondition()` in `src/backend/physics/head/CircularMembrane.cc`:
+
+```cpp
+float amp = 0.1f;   // Initial displacement amplitude
+// Gaussian width controlled by: exp(-0.01 * ir * ir)
 ```
 
 ### How to Tune for Different Drum Sounds
 
 | Parameter | Effect | For Kick | For Tom | For Snare |
 |-----------|--------|----------|---------|-----------|
-| `GRID_R`, `GRID_TH` | Pitch | Large (100+) | Medium (70) | Small (50) |
-| `damp` | Decay time | Low (5-8) | Medium (10) | High (15-20) |
-| `c` | Brightness | Low (0.8) | Medium (1.0) | High (1.2) |
+| `GRID_R`, `GRID_TH` | Pitch | Large (100+) | Medium (50) | Small (30) |
+| `TENSION` | Pitch / decay | Low (80) | Medium (150) | High (250) |
+| `RADIUS` | Pitch | Large (0.4) | Medium (0.3) | Small (0.18) |
 | `amp` | Strike strength | High (0.2) | Medium (0.1) | Low (0.05) |
 
 ## Architecture
 
-### RectangularMembrane (Physics)
-- Stores 3 grids: `prev_`, `curr_`, `next_` (finite difference states)
-- `setInitialCondition()`: Sets Gaussian strike at center
-- `Simulate()`: Steps physics forward by `BUFFER_SIZE` samples
-- Extracts audio from center point with 15x gain
+### CircularMembrane (Physics)
+- Solves the 2D wave equation in polar coordinates (radial + angular)
+- Stores 3 flat grids (`u_prev_`, `u_curr_`, `u_next_`) indexed as `[ir * Ntheta_ + itheta]`
+- `init()`: Derives wave speed `c = sqrt(T/ρ)` and timestep `dt = CFL * dr / c`; allocates grids
+- `setInitialCondition()`: Applies a Gaussian strike centred at r=0
+- `Simulate()`: Runs `physSteps_` FDM timesteps (enough to cover one audio buffer); handles origin singularity by averaging angular neighbours; enforces Dirichlet boundary at outer edge
+- `sampleInterp()`: Linear resampling from physics rate → 24 kHz for audio output
+- Audio extracted from centre point (r=0) with 15× gain
 
 ### AudioEngine (Audio I/O)
 - Uses **PortAudio** for cross-platform audio
@@ -165,34 +183,32 @@ float c = 1.0;                // Wave speed (higher = higher pitch)
 
 ### DrumRenderer (Visualization)
 - **OpenGL 3.3 Core** with GLFW window management
-- Generates grid mesh at initialization
-- `updateVertexData()`: Modifies Y-coordinates each frame
-- Wireframe mode shows membrane motion clearly
-- GLM matrices for 3D transformations
+- `updateCircularVertexData()`: Maps polar grid to Cartesian mesh vertices each frame
+- Wireframe mode (GL_LINE) shows membrane displacement clearly
+- GLM matrices for rotation and tilt transformations
 
 ## Technical Highlights
 
 ### Real-Time Audio Streaming
-- Chunked processing: 2048 samples per `Simulate()` call
-- Overlapping buffers (512 samples) for seamless transitions
-- Ring buffer prevents audio glitches
-- ~42.7 ms latency (BUFFER_SIZE / SAMPLE_RATE)
+- Physics timestep derived from membrane parameters (not fixed); `physSteps_` computed so one `Simulate()` call covers exactly one audio buffer's worth of time
+- `sampleInterp()` resamples physics output to 24 kHz before pushing to ring buffer
+- Ring buffer prevents audio glitches under CPU load
+- ~85 ms latency (BUFFER_SIZE / SAMPLE_RATE)
 
 ### Numerical Stability
-- **CFL Condition**: `(c*dt/dx)² < 0.5` enforced in parameters
-- Current: CFL = 0.25 (safe margin)
-- Explicit time-stepping (stable for chosen parameters)
-- Boundary conditions: Clamped edges (u = 0)
+- **CFL Condition**: `(c·dt/dr)² ≤ CFL²` enforced at init
+- Current CFL = 0.2 (safe margin below 0.5 limit)
+- Origin singularity (r=0) handled by averaging all angular neighbours
+- Boundary conditions: Dirichlet (u=0) at outer edge
 
 ### Performance
-- OpenMP parallelization of spatial grid loop
-- Vectorized operations via std algorithms
-- ~100×100 grid runs at 60+ FPS on modern hardware
-- Profile with: `perf record ./drum-machine`
+- OpenMP parallelization of the spatial grid loop in `Simulate()`
+- 50×75 polar grid runs at 60 FPS with vsync on modern hardware
+- Reduce `GRID_R`/`GRID_TH` in `simDefs.hpp` if performance is insufficient
 
 ## Audio Output Quality
 
-- **Sample Rate**: 48 kHz (professional audio standard)
+- **Sample Rate**: 24 kHz
 - **Bit Depth**: 16-bit signed PCM
 - **Channels**: Mono
 - **Dynamic Range**: ±1.0 (clamped to prevent clipping)
@@ -200,7 +216,6 @@ float c = 1.0;                // Wave speed (higher = higher pitch)
 ## Future Enhancements (from Development Plan)
 
 ### Phase 2: Advanced Features
-- [ ] Circular membrane with polar coordinates
 - [ ] Multiple strike locations (mouse interaction)
 - [ ] Parameter GUI
 - [ ] Simulate Drum Shell
@@ -220,16 +235,18 @@ See `drum_machine_plan.md` for detailed development roadmap.
 
 ## Testing
 
-Unit test with audio output:
+Unit test with audio output (tests the rectangular membrane solver):
 
 ```bash
-cd test
-make
-./test_rectangular_membrane
-# Press 'S' to run simulation, 'E' to exit
+cd build
+cmake --build .
+ctest --verbose -A "2"
+
+# Or run directly:
+./build/bin/test_rectangular_membrane 2
 ```
 
-Generates `output.wav` with the drum sound (compile with `WAVE_FILE 1` in rectangularMembraneUnitTest.cc to dump wav file).
+Generates `output.wav`. Compile the test with `WAVE_FILE 1` in `test/rectangularMembraneUnitTest.cc` to write the WAV file.
 
 ## Troubleshooting
 
@@ -292,7 +309,6 @@ This project is provided as-is for educational and research purposes.
 ## Contributing
 
 Contributions welcome! Areas of interest:
-- Circular membrane implementation (polar coordinates)
 - Optimization (GPU acceleration, SIMD)
 - Interactive GUI improvements
 - Additional drum presets and tuning
@@ -303,5 +319,5 @@ Developed as an exploration of physical modeling synthesis and real-time audio p
 
 ---
 
-**Latest Update**: March 2026  
-**Current Status**: MVP with rectangular membrane, real-time audio, and 3D visualization
+**Latest Update**: April 2026  
+**Current Status**: MVP with circular membrane (polar FDM), real-time audio, and 3D visualization
