@@ -15,7 +15,7 @@ This drum machine simulates the vibration of a 2D circular membrane (like a drum
 
 - **Physics-Based Synthesis**: Solves the 2D wave equation in polar coordinates using finite difference method
 - **Real-Time Audio**: 24 kHz audio output via PortAudio with ring-buffer producer-consumer decoupling
-- **Audio DSP Toolbox**: Dedicated resampling module (`AudioDSP_Toolbox`) decouples physics rate from audio output rate
+- **Audio DSP Toolbox**: Dedicated dsp module (`AudioDSP_Toolbox`)
 - **Strike Placement**: Ray-cast mouse interaction lets you strike any point on the membrane; strike position (r, θ) is passed to the physics solver
 - **3D Visualization**: Interactive OpenGL rendering with rotation, tilt, and audio toggle controls
 - **Damping Simulation**: Energy loss modeling for realistic drum decay
@@ -108,8 +108,7 @@ cmake --build .
 ```bash
 cd build/bin/
 mkdir -p shaders/
-ln -sf ../../src/frontend/default.vert shaders/
-ln -sf ../../src/frontend/default.frag shaders/
+ln -sf ../../src/frontend/default* shaders/
 ./drum-machine
 ```
 
