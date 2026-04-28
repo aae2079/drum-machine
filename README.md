@@ -4,7 +4,7 @@ A real-time 2D membrane drum synthesizer using finite difference method (FDM) to
 
 ## Overview
 
-This drum machine simulates the vibration of a 2D rectangular membrane (like a drum head) using numerical solutions to the 2D wave equation with damping. The displacement of the membrane is converted into audio in real-time at 48 kHz sample rate, while an interactive 3D visualization shows the membrane's motion.
+This drum machine simulates the vibration of a 2D circular membrane (like a drum head) using numerical solutions to the 2D wave equation in polar coordinates with damping. The displacement of the membrane is converted into audio in real-time at 24 kHz, while an interactive 3D visualization shows the membrane's motion. Users can click anywhere on the rendered membrane to strike it at that exact position.
 
 <p align="center">
    <img src= "https://github.com/user-attachments/assets/7d44209a-7714-4026-81cf-dedf9e0a9ed6">
@@ -13,11 +13,13 @@ This drum machine simulates the vibration of a 2D rectangular membrane (like a d
 
 ### Key Features
 
-- **Physics-Based Synthesis**: Solves the 2D wave equation using finite difference method
-- **Real-Time Audio**: 48 kHz sample rate audio output via PortAudio
-- **3D Visualization**: Interactive OpenGL rendering with rotation and tilt controls
+- **Physics-Based Synthesis**: Solves the 2D wave equation in polar coordinates using finite difference method
+- **Real-Time Audio**: 24 kHz audio output via PortAudio with ring-buffer producer-consumer decoupling
+- **Audio DSP Toolbox**: Dedicated resampling module (`AudioDSP_Toolbox`) decouples physics rate from audio output rate
+- **Strike Placement**: Ray-cast mouse interaction lets you strike any point on the membrane; strike position (r, θ) is passed to the physics solver
+- **3D Visualization**: Interactive OpenGL rendering with rotation, tilt, and audio toggle controls
 - **Damping Simulation**: Energy loss modeling for realistic drum decay
-- **Modular Architecture**: Separation of physics, rendering, and audio components
+- **Modular Architecture**: Physics, audio engine, DSP, and rendering are fully decoupled components
 
 ## Project Structure
 
@@ -31,7 +33,10 @@ drum-machine/
 │   │   │       ├── CircularMembrane.cc      # Polar FDM physics solver
 │   │   │       └── RectangularMembrane.cc   # Cartesian FDM solver (legacy/tests)
 │   │   └── audio/
-│   │       └── audioEngine.cc              # Audio I/O with PortAudio
+│   │       ├── dsp/
+│   │       │   └── audioDSP.cc             # AudioDSP_Toolbox: resampling & DSP utilities
+│   │       └── engine/
+│   │           └── audioEngine.cc          # PortAudio I/O with ring buffer
 │   ├── frontend/
 │   │   ├── drumRenderer.cc                 # OpenGL rendering
 │   │   ├── default.vert                    # Vertex shader
@@ -42,10 +47,12 @@ drum-machine/
 │   ├── CircularMembrane.hpp
 │   ├── RectangularMembrane.hpp
 │   ├── audioEngine.hpp
+│   ├── audioDSP.hpp                         # AudioDSP_Toolbox interface
 │   ├── drumRenderer.hpp
+│   ├── Surface.hpp                          # Abstract membrane base (placeholder)
 │   ├── audioDefs.hpp                        # Audio configuration
 │   ├── simDefs.hpp                          # Simulation parameters
-│   ├── strikeDefs.hpp                       # Strike parameters
+│   ├── strikeDefs.hpp                       # Strike parameters (amplitude, rPos, thetaPos)
 │   └── wav.hpp                              # WAV file format
 ├── dependencies/                            # Third-party headers (GLAD, KHR)
 ├── test/
@@ -100,20 +107,22 @@ cmake --build .
 
 ```bash
 cd build/bin/
-mdkir shaders/
-ln -sf ../../src/frontend/default/* . 
+mkdir -p shaders/
+ln -sf ../../src/frontend/default.vert shaders/
+ln -sf ../../src/frontend/default.frag shaders/
 ./drum-machine
 ```
 
 ## Controls
 
 ### Simulation
-- **Mouse Click (↖)** — Runs simulation on membrane
+- **Mouse Click** — Strike the membrane at the clicked position; ray-cast maps the click to the membrane's (r, θ) coordinates
 - **ESC** — Exit application
 
 ### Visualization
 - **Arrow Keys (↑↓)** — Tilt membrane up/down
 - **Arrow Keys (←→)** — Rotate membrane left/right
+- **M** — Toggle audio output on/off
 
 ## Configuration
 
@@ -147,12 +156,17 @@ Tune the drum sound by editing `include/simDefs.hpp`:
 #define RADIUS 0.3f      // meters — physical drum head size
 ```
 
-Strike parameters are set in `CircularMembrane::setInitialCondition()` in `src/backend/physics/head/CircularMembrane.cc`:
+Strike parameters are passed via the `StrikeDefs` struct (defined in `include/strikeDefs.hpp`):
 
 ```cpp
-float amp = 0.1f;   // Initial displacement amplitude
-// Gaussian width controlled by: exp(-0.01 * ir * ir)
+struct StrikeDefs {
+    float amplitude;  // Normalized strike amplitude (0.0–1.0)
+    float rPos;       // Normalized radial position (0.0 = center, 1.0 = edge)
+    float thetaPos;   // Angular position in radians (0 to 2π)
+};
 ```
+
+The Gaussian width is controlled inside `CircularMembrane::setInitialCondition()` (`src/backend/physics/head/CircularMembrane.cc`).
 
 ### How to Tune for Different Drum Sounds
 
@@ -169,10 +183,13 @@ float amp = 0.1f;   // Initial displacement amplitude
 - Solves the 2D wave equation in polar coordinates (radial + angular)
 - Stores 3 flat grids (`u_prev_`, `u_curr_`, `u_next_`) indexed as `[ir * Ntheta_ + itheta]`
 - `init()`: Derives wave speed `c = sqrt(T/ρ)` and timestep `dt = CFL * dr / c`; allocates grids
-- `setInitialCondition()`: Applies a Gaussian strike centred at r=0
+- `setInitialCondition(StrikeDefs*)`: Applies a Gaussian strike at the specified (r, θ) position; r=0 and θ are both user-controllable via mouse click
 - `Simulate()`: Runs `physSteps_` FDM timesteps (enough to cover one audio buffer); handles origin singularity by averaging angular neighbours; enforces Dirichlet boundary at outer edge
-- `sampleInterp()`: Linear resampling from physics rate → 24 kHz for audio output
 - Audio extracted from centre point (r=0) with 15× gain
+
+### AudioDSP_Toolbox (DSP)
+- Standalone DSP utility class (`src/backend/audio/dsp/audioDSP.cc`)
+- `sampleInterp()`: Linear resampling from physics simulation rate → 24 kHz, decoupling the physics timestep from the audio output rate
 
 ### AudioEngine (Audio I/O)
 - Uses **PortAudio** for cross-platform audio
@@ -216,7 +233,7 @@ float amp = 0.1f;   // Initial displacement amplitude
 ## Future Enhancements (from Development Plan)
 
 ### Phase 2: Advanced Features
-- [ ] Multiple strike locations (mouse interaction)
+- [x] Multiple strike locations (mouse interaction — ray-cast to (r, θ))
 - [ ] Parameter GUI
 - [ ] Simulate Drum Shell
 
@@ -320,4 +337,4 @@ Developed as an exploration of physical modeling synthesis and real-time audio p
 ---
 
 **Latest Update**: April 2026  
-**Current Status**: MVP with circular membrane (polar FDM), real-time audio, and 3D visualization
+**Current Status**: MVP with circular membrane (polar FDM), strike position via ray-cast, AudioDSP toolbox, real-time audio, and 3D visualization

@@ -102,6 +102,8 @@ void appSettings(){
 	std::cout << "  Click membrane to strike and start simulation" << std::endl;
 	std::cout << "  Arrow keys (↑↓ & ←→) to rotate/tilt view" << std::endl;
 	std::cout << "  M key to toggle audio on/off" << std::endl;
+	std::cout << "  ESC to quit" << std::endl;
+	std::cout << "-------------------------------------------------------------" << std::endl;
 }
 
 int main(void) {
