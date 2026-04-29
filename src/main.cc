@@ -25,7 +25,6 @@ float tilt = 15.0f;
 typedef struct {
     CircularMembrane membrane;
     int simRunning = 0;
-    int sampsProc = 0;
 }SimState;
 
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -91,7 +90,6 @@ void mouseCB(GLFWwindow* window, int button, int action, int mods)
 		
         auto* state = static_cast<SimState*>(glfwGetWindowUserPointer(window));
         state->membrane.setInitialCondition(&strike);
-        state->sampsProc = 0;
         state->simRunning = true;
     }
 }
@@ -158,10 +156,11 @@ int main(void) {
 		auto frameStart = std::chrono::steady_clock::now();
 		drumGui.pollEvents();
 		// Step sim only if running
+		float dB = 0.0f;
 		if (state.simRunning){
-			if(state.sampsProc > num_samples){
+			if(dB <= -60.0f){
 				state.simRunning = false;
-				state.sampsProc = 0;
+				dB = 0.0f;
 				std::cout << "Simulation finished! Click again." << std::endl;
 				drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
 				continue;
@@ -172,12 +171,11 @@ int main(void) {
 			audioBuf = dspToolbox.sampleInterp(state.membrane.getPhysicsBuffer().data(),
 			                                   state.membrane.getPhysicsBuffer().size(),
 			                                   SIM_RATE, SAMPLE_RATE);
+			dB = dspToolbox.calculateDecibleLevel(audioBuf);
 			if (runAudio){
 				audio.pushChunk(audioBuf.data(), audioBuf.size());
 				audio.delay();
 			}
-
-			state.sampsProc += BUFFER_SIZE;
 		}
 			
 		// Always update and render
