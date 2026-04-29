@@ -106,9 +106,9 @@ void appSettings(){
 
 void displayLevelBar(float dB) {
 
-	//each "=" indicates 1 dB
+	//each # indicates 1 dB
 	int barsToShow = (int)(dB);
-	std::string levelStr(barsToShow, '=');
+	std::string levelStr(barsToShow, '#'); // Block character representation
 	std::cout << "\r" << levelStr << std::endl;
 
 }
