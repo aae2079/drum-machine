@@ -104,6 +104,15 @@ void appSettings(){
 	std::cout << "-------------------------------------------------------------" << std::endl;
 }
 
+void displayLevelBar(float dB) {
+
+	//each "=" indicates 1 dB
+	int barsToShow = (int)(dB);
+	std::string levelStr(barsToShow, '=');
+	std::cout << "\r" << levelStr << std::endl;
+
+}
+
 int main(void) {
 	// Make OpenMP worker threads sleep between parallel regions instead of spin-waiting.
 	// Must be set before the first OMP parallel region initializes the thread pool.
@@ -157,8 +166,11 @@ int main(void) {
 		drumGui.pollEvents();
 		// Step sim only if running
 		float dB = 0.0f;
+		std::cout << "Audio Level:" << std::endl;
+		std::cout << "[";
 		if (state.simRunning){
 			if(dB <= -60.0f){
+				std::cout << "]" << std::endl;
 				state.simRunning = false;
 				dB = 0.0f;
 				std::cout << "Simulation finished! Click again." << std::endl;
@@ -172,6 +184,7 @@ int main(void) {
 			                                   state.membrane.getPhysicsBuffer().size(),
 			                                   SIM_RATE, SAMPLE_RATE);
 			dB = dspToolbox.calculateDecibleLevel(audioBuf);
+			displayLevelBar(dB);
 			if (runAudio){
 				audio.pushChunk(audioBuf.data(), audioBuf.size());
 				audio.delay();
