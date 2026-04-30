@@ -134,10 +134,7 @@ int main(void) {
 	#else
 	setenv("OMP_WAIT_POLICY", "passive", 1);
 	#endif
-	std::string input;
-    float sim_time = 2.0f;
-    int num_samples = sim_time * SAMPLE_RATE;
-
+	
 	// Initialize audio engine
 	AudioEngine audio;
 	audio.start();
