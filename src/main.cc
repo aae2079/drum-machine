@@ -110,7 +110,7 @@ void appSettings(){
 
 	std::string dbScale(numDBSteps, ' ');
 	dbScale = "[" + dbScale + "]";
-	std::cout << "\r" << dbScale.c_str() << 0 << " dB" << std::flush;
+	std::cout << "\r" << dbScale.c_str() << -numDBSteps << " dB" << std::flush;
 }
 
 void displayLevelBar(float dB) {
@@ -134,7 +134,7 @@ int main(void) {
 	#else
 	setenv("OMP_WAIT_POLICY", "passive", 1);
 	#endif
-	
+
 	// Initialize audio engine
 	AudioEngine audio;
 	audio.start();
