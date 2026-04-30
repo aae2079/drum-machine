@@ -105,7 +105,10 @@ void CircularMembrane::Simulate(){
                 }
                 float laplacian = d2u_dr2 + term_r + term_theta;
 
-                u_next_[ii * Ntheta_ + jj] = 2.0f * u_curr_[ii * Ntheta_ + jj] - u_prev_[ii * Ntheta_ + jj] + (c_ * c_ * dt_ * dt_) * laplacian;
+                float gamma_dt = DAMPING * dt_;
+                u_next_[ii * Ntheta_ + jj] = (2.0f * u_curr_[ii * Ntheta_ + jj]
+                    - u_prev_[ii * Ntheta_ + jj] * (1.0f - gamma_dt)
+                    + (c_ * c_ * dt_ * dt_) * laplacian) / (1.0f + gamma_dt);
             }
         }
 

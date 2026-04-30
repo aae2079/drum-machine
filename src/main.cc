@@ -22,10 +22,13 @@ bool runAudio = true;
 float rotation = -30.0f;
 float tilt = 15.0f;
 
+
+int numDBSteps = 110; // from 0 to 100 dB in 1 dB increments
+
 typedef struct {
     CircularMembrane membrane;
     int simRunning = 0;
-    int sampsProc = 0;
+	float dB = 0.0f;
 }SimState;
 
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -91,8 +94,8 @@ void mouseCB(GLFWwindow* window, int button, int action, int mods)
 		
         auto* state = static_cast<SimState*>(glfwGetWindowUserPointer(window));
         state->membrane.setInitialCondition(&strike);
-        state->sampsProc = 0;
         state->simRunning = true;
+		state->dB = 0.0f;
     }
 }
 void appSettings(){
@@ -104,6 +107,23 @@ void appSettings(){
 	std::cout << "  M key to toggle audio on/off" << std::endl;
 	std::cout << "  ESC to quit" << std::endl;
 	std::cout << "-------------------------------------------------------------" << std::endl;
+
+	std::string dbScale(numDBSteps, ' ');
+	dbScale = "[" + dbScale + "]";
+	std::cout << "\r" << dbScale.c_str() << -numDBSteps << " dB" << std::flush;
+}
+
+void displayLevelBar(float dB) {
+
+	//each # indicates 1 dB
+	int barsToShow = std::abs((int)dB); // shift dB so that -60dB is 0 bars, and 0dB is 60 bars
+	std::string levelStr(numDBSteps - barsToShow, '#'); // Block character representation
+	//concat the remaining string with spaces
+	levelStr += std::string(barsToShow, ' ');
+	levelStr = "[" + levelStr; // Add left boundary
+	levelStr += "]"; // Add right boundary
+	std::cout << "\r" << levelStr << dB << " dB" << std::flush;
+
 }
 
 int main(void) {
@@ -114,9 +134,6 @@ int main(void) {
 	#else
 	setenv("OMP_WAIT_POLICY", "passive", 1);
 	#endif
-	std::string input;
-    float sim_time = 2.0f;
-    int num_samples = sim_time * SAMPLE_RATE;
 
 	// Initialize audio engine
 	AudioEngine audio;
@@ -159,10 +176,9 @@ int main(void) {
 		drumGui.pollEvents();
 		// Step sim only if running
 		if (state.simRunning){
-			if(state.sampsProc > num_samples){
+			if(state.dB <= -100.0f){
 				state.simRunning = false;
-				state.sampsProc = 0;
-				std::cout << "Simulation finished! Click again." << std::endl;
+				state.dB = 0.0f;
 				drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
 				continue;
 			}
@@ -172,12 +188,12 @@ int main(void) {
 			audioBuf = dspToolbox.sampleInterp(state.membrane.getPhysicsBuffer().data(),
 			                                   state.membrane.getPhysicsBuffer().size(),
 			                                   SIM_RATE, SAMPLE_RATE);
+			state.dB = dspToolbox.calculateDecibleLevel(audioBuf);
+			displayLevelBar(state.dB);
 			if (runAudio){
 				audio.pushChunk(audioBuf.data(), audioBuf.size());
 				audio.delay();
 			}
-
-			state.sampsProc += BUFFER_SIZE;
 		}
 			
 		// Always update and render
