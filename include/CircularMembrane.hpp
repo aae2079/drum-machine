@@ -6,7 +6,6 @@
 #include <string>
 #include <cmath>
 #include "simDefs.hpp"
-#include "audioDefs.hpp"
 #include "strikeDefs.hpp"
 
 
@@ -25,7 +24,7 @@ public:
         
     
     void setInitialCondition(const StrikeDefs* strike);
-    void Simulate();
+    void Simulate(int nSteps);
 
 
 private:
@@ -37,9 +36,6 @@ private:
     float dr_;      // radial step size m
     float dtheta_;  // angular step size radians
     float simRate_; // simulation sample rate (Hz)
-
-    int physSteps_; // number of physics steps to run per audio buffer (derived from simRate_ and SAMPLE_RATE)
-
 
     // Discretization / storage placeholders
     unsigned int Nr_; // radial samples

@@ -33,8 +33,6 @@ void CircularMembrane::init(float radius, float tension, float rho_density, unsi
     u_prev_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_curr_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_next_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
-    physSteps_ = std::max(1, (int)std::ceil((double)BUFFER_SIZE * simRate_ / SAMPLE_RATE));
-    simBuf_ = std::vector<float>(physSteps_, 0.0f);
 
     // Dirichlet fixed outer boundary: all angular positions at r = Nr_-1
     for (int jj = 0; jj < Ntheta_; jj++) {
@@ -74,11 +72,9 @@ void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
     }
 }
 
-void CircularMembrane::Simulate(){
-    // Run exactly enough physics steps to cover one audio buffer's worth of time.
-    // sampleInterp() on simBuf_ will then produce exactly BUFFER_SIZE audio samples.
-    std::vector<float> curBuf(physSteps_, 0.0f);
-    for(int tt = 0; tt < physSteps_; tt++){
+void CircularMembrane::Simulate(int nSteps){
+    std::vector<float> curBuf(nSteps, 0.0f);
+    for(int tt = 0; tt < nSteps; tt++){
         // --- spatial update ----
         #pragma omp parallel for schedule(static)
         for (int ii = 1; ii < Nr_ - 1; ii++){

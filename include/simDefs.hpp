@@ -2,7 +2,6 @@
 #define DRUM_MACHINE_SIM_DEFS_H
 
 #define CFL 0.2  // Courant-Friedrichs-Lewy condition for stability
-#define BUFFER_SIZE 2048
 
 //Sets tonality of the drum sound, bigger membrane = lower tone, smaller membrane = higher tone
 //This will be useful when creating a drum set!

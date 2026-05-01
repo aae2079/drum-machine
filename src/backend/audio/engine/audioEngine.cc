@@ -15,7 +15,7 @@ AudioEngine::AudioEngine(int sampleRate, int bufferSize): _sampleRate(sampleRate
         Pa_Terminate();
         return;
     }
-    outputParameters.channelCount = 1; // Mono output
+    outputParameters.channelCount = (uint32_t)NUM_CHANNELS; // Mono output
     outputParameters.sampleFormat = paFloat32; // 32-bit float output
     outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
     outputParameters.hostApiSpecificStreamInfo = nullptr;
@@ -67,16 +67,9 @@ void AudioEngine::stop() {
     Pa_Sleep(2000); // Wait 2 seconds for audio to finish playing
 }
 
-void AudioEngine::pushChunk(const float* buffer, size_t numSamples) {
+void AudioEngine::consumeAudio(const float* buffer, size_t numSamples) {
    //push audio data into the ring buffer for playbac
-    Data cur;
-    cur.audio_buffer.assign(buffer, buffer + numSamples);
-    cur.full = 1;
-    while (ringBuf[fill_ix].full != 0) {
-        Pa_Sleep(_bufferSize * 1000 / _sampleRate); // sleep one callback period
-    }
-    ringBuf[fill_ix] = cur; // Copy current buffer to ring buffer
-    fill_ix = (fill_ix + 1) % NUM_FRAMES;
+    audio_buffer.assign(buffer, buffer + numSamples);
 }
 
 void AudioEngine::delay(){
@@ -85,40 +78,47 @@ void AudioEngine::delay(){
 
 int AudioEngine::paStreamCB(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                     const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
-    return static_cast<AudioEngine*>(userData)->internalAudioCB(static_cast<float*>(outputBuffer),framesPerBuffer);
+    return static_cast<AudioEngine*>(userData)->internalAudioCB(inputBuffer, outputBuffer, framesPerBuffer, timeInfo, statusFlags, userData);
 }
 
 void AudioEngine::paStreamFinished(void*) {
     std::cout << "PortAudio stream finished.\n";
 }
 
-int AudioEngine::internalAudioCB(float *out, unsigned long frames){
-    // Implement the audio callback function
-    unsigned long filled = 0;
+int AudioEngine::internalAudioCB(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
+                    const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userDatas){
     
-    while(filled < frames){
-        Data &cur = ringBuf[read_ix];
-        if (cur.audio_buffer.empty() || cur.full == 0){
-            // If no data, output silence
-            std::fill(out + filled, out + frames, 0.0f);
-            break;
+    if (outputParameters.channelCount == 1){
+        //mono
+        if (audio_buffer.empty()) {
+            // If no audio data is available, output silence
+            std::memset(outputBuffer, 0, framesPerBuffer * sizeof(float));
+        } else {
+            // Copy audio data to output buffer
+            size_t samplesToCopy = std::min(framesPerBuffer, audio_buffer.size());
+            std::memcpy(outputBuffer, audio_buffer.data(), samplesToCopy * sizeof(float));
+            if (samplesToCopy < framesPerBuffer) {
+                // If we have less data than the buffer size, fill the rest with silence
+                std::memset(static_cast<float*>(outputBuffer) + samplesToCopy, 0, (framesPerBuffer - samplesToCopy) * sizeof(float));
+            }
         }
-
-        int available = (int)cur.audio_buffer.size() - buf_pos;
-        int needed    = (int)(frames - filled);
-        int to_copy   = std::min(available, needed);
-
-        std::memcpy(out + filled, cur.audio_buffer.data() + buf_pos, to_copy * sizeof(float));
-
-        filled  += to_copy;
-        buf_pos += to_copy;
-
-        // Current Data chunk exhausted — advance ring buffer
-        if (buf_pos >= (int)cur.audio_buffer.size()) {
-            cur.full = 0;           // Mark slot as consumed so main thread can reuse
-            cur.audio_buffer.clear();
-            read_ix = (read_ix + 1) % NUM_FRAMES;
-            buf_pos = 0;
+    } else if (outputParameters.channelCount == 2){
+        //stereo: duplicate mono signal to both channels
+        if (audio_buffer.empty()) {
+            // If no audio data is available, output silence
+            std::memset(outputBuffer, 0, framesPerBuffer * 2 * sizeof(float));
+        } else {
+            // Copy audio data to output buffer, duplicating for stereo
+            size_t samplesToCopy = std::min(framesPerBuffer, audio_buffer.size());
+            float* out = static_cast<float*>(outputBuffer);
+            for (size_t i = 0; i < samplesToCopy; i++) {
+                out[2*i] = audio_buffer[i];     // Left channel
+                out[2*i + 1] = audio_buffer[i]; // Right channel
+            }
+            if (samplesToCopy < framesPerBuffer) {
+                // If we have less data than the buffer size, fill the rest with silence
+                std::memset(out + 2*samplesToCopy, 0, (framesPerBuffer - samplesToCopy) * 2 * sizeof(float));
+            }
         }
     }
 

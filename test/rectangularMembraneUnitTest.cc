@@ -56,7 +56,7 @@ int main(int argc, char** argv){
         std::chrono::duration<double, std::milli> duration = end - start;
 
         #if PORT_AUDIO
-        audio.pushChunk(membrane.getAudioBuffer().data(),membrane.getAudioBuffer().size());
+        audio.consumeAudio(membrane.getAudioBuffer().data(),membrane.getAudioBuffer().size());
         #endif
         
         //Need to set some kind of logger here

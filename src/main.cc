@@ -11,40 +11,39 @@
 #include "audioDSP.hpp"
 #include "strikeDefs.hpp"
 
-float SIM_RATE; // global variable to hold the simulation sample rate, will be set by CircularMembrane init and used by main loop for upsampling
-
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
-int firstTime = 1;
-bool simRunning = false; //sim doesnt run on startup, waits for user to click membrane to strike and start simulating
-bool runAudio = true;
-// Variables that help the rotation of the grid
-float rotation = -30.0f;
-float tilt = 15.0f;
-
 
 int numDBSteps = 110; // from 0 to 100 dB in 1 dB increments
 
-typedef struct {
+struct SimState {
     CircularMembrane membrane;
+	DrumRenderer* renderer;
     int simRunning = 0;
 	float dB = 0.0f;
-}SimState;
+};
+
+struct KeyStateVars {
+	// Variables that help the rotation of the grid
+	float rotation = -30.0f;
+	float tilt = 15.0f; 
+	bool runAudio = true;
+} keyState;
 
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-		rotation -= 1.0f;
+		keyState.rotation -= 1.0f;
 	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-		rotation += 1.0f;
+		keyState.rotation += 1.0f;
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		tilt += 1.0f;
+		keyState.tilt += 1.0f;
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		tilt -= 1.0f;
+		keyState.tilt -= 1.0f;
 	if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
-		runAudio = !runAudio;
+		keyState.runAudio = !keyState.runAudio;
 	
 }
 
@@ -59,10 +58,10 @@ void mouseCB(GLFWwindow* window, int button, int action, int mods)
         float ndcY = (float)(1.0 - 2.0 * y_pos / HEIGHT);
 
         // Reconstruct the same matrices used in the render loop
-        glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(keyState.rotation), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 view  = glm::rotate(
                               glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.5f)),
-                              glm::radians(tilt), glm::vec3(1.0f, 0.0f, 0.0f));
+                              glm::radians(keyState.tilt), glm::vec3(1.0f, 0.0f, 0.0f));
         glm::mat4 proj  = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
 
         // Unproject NDC point into a view-space ray direction, then into world space
@@ -153,7 +152,10 @@ int main(void) {
 	// Input handling
 	SimState state;
 	state.membrane.init((float)RADIUS, (float)TENSION, (float)MATERIAL_DENSITY, GRID_R, GRID_TH);
-	SIM_RATE = state.membrane.getSimRate();
+	float SIM_RATE = state.membrane.getSimRate();
+	//Determine number of physics steps to run per frame based on the ratio of the simulation rate to the audio sample rate, and the audio buffer size. 
+	//This ensures that we produce enough audio samples for each chunk we push to the audio engine, while keeping the physics simulation in sync with the audio output.
+	int physSteps = std::max(1, (int)std::ceil((double)BUFFER_SIZE * SIM_RATE / SAMPLE_RATE));
 	glfwSetKeyCallback(drumGui.getWindow(), keyCB);
 	glfwSetWindowUserPointer(drumGui.getWindow(), &state);
 	glfwSetMouseButtonCallback(drumGui.getWindow(), mouseCB);
@@ -182,7 +184,7 @@ int main(void) {
 				drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
 				continue;
 			}
-			state.membrane.Simulate();
+			state.membrane.Simulate(physSteps);
 			std::vector<float> audioBuf;
 			//this decouples the physics simulation rate from the audio output rate by resampling the current simBuf_ chunk to exactly BUFFER_SIZE samples, which is what pushChunk expects
 			audioBuf = dspToolbox.sampleInterp(state.membrane.getPhysicsBuffer().data(),
@@ -190,9 +192,8 @@ int main(void) {
 			                                   SIM_RATE, SAMPLE_RATE);
 			state.dB = dspToolbox.calculateDecibleLevel(audioBuf);
 			displayLevelBar(state.dB);
-			if (runAudio){
-				audio.pushChunk(audioBuf.data(), audioBuf.size());
-				audio.delay();
+			if (keyState.runAudio) {
+				audio.consumeAudio(audioBuf.data(), audioBuf.size());
 			}
 		}
 			
@@ -206,10 +207,11 @@ int main(void) {
 		view  = glm::mat4(1.0f);
 		proj  = glm::mat4(1.0f);
 
-		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::rotate(model, glm::radians(keyState.rotation), glm::vec3(0.0f, 1.0f, 0.0f));
 		view  = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.5f));
-		view  = glm::rotate(view, glm::radians(tilt), glm::vec3(1.0f, 0.0f, 0.0f));
+		view  = glm::rotate(view, glm::radians(keyState.tilt), glm::vec3(1.0f, 0.0f, 0.0f));
 		proj  = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
+
 
 		drumGui.setMatrices(model, view, proj);
 		drumGui.setUniform1f("scale", 0.5f);
