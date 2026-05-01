@@ -1,0 +1,21 @@
+{
+    "audio": {
+        "sample_rate": 24000.0,
+        "bit_depth": 16,
+        "num_channels": 1,
+        "audio_format_pcm": 1
+    },
+
+    "timbre": {
+        "membrane_thickness": 0.0001,
+        "material_density": 1400.0,
+        "tension": 150.0,
+        "radius": 0.3,
+        "damping": 1.5
+    },
+
+    "dimensions":{
+        "grid_r": 50,
+        "grid_th": 75
+    }
+}

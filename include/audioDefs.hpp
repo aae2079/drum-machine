@@ -1,12 +1,17 @@
 #ifndef DRUM_MACHINE_AUDIO_DEFS_H
 #define DRUM_MACHINE_AUDIO_DEFS_H
 
-#define SUBCHUNK1SIZE 16
-#define AUDIO_FORMAT_PCM 1
-#define SAMPLE_RATE 24000.0f
-#define BIT_DEPTH 16
-#define NUM_CHANNELS 1 //mono for now
-#define BYTE_RATE (SAMPLE_RATE * NUM_CHANNELS * BIT_DEPTH / 8)
-#define BLOCK_ALIGN (NUM_CHANNELS * BIT_DEPTH / 8)
+// #define BYTE_RATE (SAMPLE_RATE * NUM_CHANNELS * BIT_DEPTH / 8)
+// #define BLOCK_ALIGN (NUM_CHANNELS * BIT_DEPTH / 8)
+
+typedef struct {
+    int subchunk1Size;
+    int audioFormatPCM;
+    float sampleRate;
+    int bitDepth;
+    int numChannels;
+    int byteRate;
+    int blockAlign;
+}AudioDefinitions;
 
 #endif //DRUM_MACHINE_AUDIO_DEFS_H

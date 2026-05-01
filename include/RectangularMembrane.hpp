@@ -2,7 +2,6 @@
 #define RECTANGULAR_MEMBRANE_H
 
 
-#include "audioDefs.hpp"
 #include "simDefs.hpp"
 #include <vector>
 #include <cmath>

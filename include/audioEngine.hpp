@@ -7,7 +7,6 @@
 #include <cstring>
 #include "portaudio.h"
 #include "simDefs.hpp"
-#include "audioDefs.hpp"
 
 #define NUM_FRAMES 10
 
