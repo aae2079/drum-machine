@@ -109,7 +109,7 @@ int AudioEngine::internalAudioCB(const void *inputBuffer, void *outputBuffer, un
             std::memset(outputBuffer, 0, framesPerBuffer * 2 * sizeof(float));
         } else {
             // Copy audio data to output buffer, duplicating for stereo
-            size_t samplesToCopy = std::min(framesPerBuffer, audio_buffer.size());
+            size_t samplesToCopy = std::min((size_t)framesPerBuffer, audio_buffer.size());
             float* out = static_cast<float*>(outputBuffer);
             for (size_t i = 0; i < samplesToCopy; i++) {
                 *out++ = audio_buffer[i];     // Left channel
