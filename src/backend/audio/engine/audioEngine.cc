@@ -95,7 +95,7 @@ int AudioEngine::internalAudioCB(const void *inputBuffer, void *outputBuffer, un
             std::memset(outputBuffer, 0, framesPerBuffer * sizeof(float));
         } else {
             // Copy audio data to output buffer
-            size_t samplesToCopy = std::min(framesPerBuffer, audio_buffer.size());
+            size_t samplesToCopy = std::min((size_t)framesPerBuffer, audio_buffer.size());
             std::memcpy(outputBuffer, audio_buffer.data(), samplesToCopy * sizeof(float));
             if (samplesToCopy < framesPerBuffer) {
                 // If we have less data than the buffer size, fill the rest with silence
