@@ -1,8 +1,6 @@
 #ifndef DRUM_MACHINE_AUDIO_DEFS_H
 #define DRUM_MACHINE_AUDIO_DEFS_H
 
-// #define BYTE_RATE (SAMPLE_RATE * NUM_CHANNELS * BIT_DEPTH / 8)
-// #define BLOCK_ALIGN (NUM_CHANNELS * BIT_DEPTH / 8)
 
 typedef struct {
     int subchunk1Size;
