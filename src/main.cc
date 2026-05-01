@@ -22,14 +22,7 @@ bool runAudio = true;
 float rotation = -30.0f;
 float tilt = 15.0f;
 
-
 int numDBSteps = 110; // from 0 to 100 dB in 1 dB increments
-
-typedef struct {
-    CircularMembrane membrane;
-    int simRunning = 0;
-	float dB = 0.0f;
-}SimState;
 
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -126,7 +119,7 @@ void displayLevelBar(float dB) {
 
 }
 
-int main(void) {
+int main(int argc, char** argv) {
 	// Make OpenMP worker threads sleep between parallel regions instead of spin-waiting.
 	// Must be set before the first OMP parallel region initializes the thread pool.
 	#if defined(_WIN32) || defined(_WIN64)
@@ -134,6 +127,11 @@ int main(void) {
 	#else
 	setenv("OMP_WAIT_POLICY", "passive", 1);
 	#endif
+
+	if (argc < 2){
+		std::cerr << "Usage: " << argv[0] << " drum_config.json" << std::endl;
+		return -1;
+	}
 
 	// Initialize audio engine
 	AudioEngine audio;
@@ -149,6 +147,7 @@ int main(void) {
    	}
 
 	appSettings();
+	//parseJsonSettings(argv[1],)
 
 	// Input handling
 	SimState state;

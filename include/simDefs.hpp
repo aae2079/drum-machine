@@ -32,4 +32,20 @@ Derived from: volumetric density ~1400 kg/m^3 x membrane thickness ~0.1mm.
     #define M_PI 3.14159265358979323846
 #endif
 
+typedef struct {
+    CircularMembrane membrane;
+    int simRunning = 0;
+	float dB = 0.0f;
+}SimState;
+
+typedef struct {
+    float membrane_thickness;
+    float material_density;
+    float tension;
+    float radius;
+    float damping;
+    unsigned int grid_r;
+    unsigned int grid_th;
+}Params;
+
 #endif // DRUM_MACHINE_SIM_DEFS_H
