@@ -11,7 +11,7 @@
 
 class AudioEngine {
 public:
-    AudioEngine(int sampleRate = SAMPLE_RATE, int bufferSize = BUFFER_SIZE);
+    AudioEngine(float sampleRate = SAMPLE_RATE, int bufferSize = BUFFER_SIZE);
     ~AudioEngine();
     void start();
     void stop();
@@ -33,7 +33,7 @@ private:
 
     std::vector<float> audio_buffer; 
 
-    int _sampleRate;
+    float _sampleRate;
     int _bufferSize;
 
 };

@@ -1,5 +1,5 @@
 #include "audioEngine.hpp"
-AudioEngine::AudioEngine(int sampleRate, int bufferSize): _sampleRate(sampleRate), _bufferSize(bufferSize) {
+AudioEngine::AudioEngine(float sampleRate, int bufferSize): _sampleRate(sampleRate), _bufferSize(bufferSize) {
     // Initialize PortAudio or other audio resources
     err = Pa_Initialize();
     if (err != paNoError) {
@@ -86,7 +86,7 @@ void AudioEngine::paStreamFinished(void*) {
 }
 
 int AudioEngine::internalAudioCB(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
-                    const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userDatas){
+                    const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userData){
     
     if (outputParameters.channelCount == 1){
         //mono
@@ -112,12 +112,12 @@ int AudioEngine::internalAudioCB(const void *inputBuffer, void *outputBuffer, un
             size_t samplesToCopy = std::min(framesPerBuffer, audio_buffer.size());
             float* out = static_cast<float*>(outputBuffer);
             for (size_t i = 0; i < samplesToCopy; i++) {
-                out[2*i] = audio_buffer[i];     // Left channel
-                out[2*i + 1] = audio_buffer[i]; // Right channel
+                *out++ = audio_buffer[i];     // Left channel
+                *out++ = audio_buffer[i]; // Right channel
             }
             if (samplesToCopy < framesPerBuffer) {
                 // If we have less data than the buffer size, fill the rest with silence
-                std::memset(out + 2*samplesToCopy, 0, (framesPerBuffer - samplesToCopy) * 2 * sizeof(float));
+                std::memset(out, 0, (framesPerBuffer - samplesToCopy) * 2 * sizeof(float));
             }
         }
     }
