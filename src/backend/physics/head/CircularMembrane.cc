@@ -73,10 +73,9 @@ void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
     }
 }
 
-void CircularMembrane::Simulate(int physSteps){
+void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
     // Run exactly enough physics steps to cover one audio buffer's worth of time.
-    // sampleInterp() on simBuf_ will then produce exactly BUFFER_SIZE audio samples.
-    std::vector<float> simBuf_(physSteps, 0.0f);
+    // sampleInterp() on simBuf_ will then produce exactly BUFFER_SIZE audio sample
     for(int tt = 0; tt < physSteps; tt++){
         // --- spatial update ----
         #pragma omp parallel for schedule(static)
@@ -126,7 +125,7 @@ void CircularMembrane::Simulate(int physSteps){
             u_next_[0 * Ntheta_ + jj] = avg;
         }
         //sample audio at center of membrane
-        simBuf_[tt] = 15.0f * u_curr_[0]; // center point r=0, all theta the same
+        physBuf[tt] = 15.0f * u_curr_[0]; // center point r=0, all theta the same
         //advance  simulation
         std::swap(u_prev_, u_curr_);
         std::swap(u_curr_, u_next_);
@@ -137,9 +136,7 @@ void CircularMembrane::Simulate(int physSteps){
             break;
         }
 
- 
     }
-    simBuf_.clear();
 }
 
 

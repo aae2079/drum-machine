@@ -22,12 +22,11 @@ public:
     void cleanup();
 
     std::vector<float>& getCurrentGrid() { return u_curr_; }
-    std::vector<float>& getPhysicsBuffer() { return simBuf_; }
     float& getSimRate() { return simRate_; }
         
     
     void setInitialCondition(const StrikeDefs* strike);
-    void Simulate(int physSteps);
+    void Simulate(int physSteps, std::vector<float>& physBuf);
 
 
 private:

@@ -186,11 +186,11 @@ int main(int argc, char** argv) {
 				drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
 				continue;
 			}
-			state.membrane.Simulate(physSteps);
-			std::vector<float> audioBuf;
+			std::vector<float> physBuf(physSteps, 0.0f);
+			state.membrane.Simulate(physSteps, physBuf);
 			//this decouples the physics simulation rate from the audio output rate by resampling the current simBuf_ chunk to exactly BUFFER_SIZE samples, which is what pushChunk expects
-			audioBuf = dspToolbox.sampleInterp(state.membrane.getPhysicsBuffer().data(),
-			                                   state.membrane.getPhysicsBuffer().size(),
+			std::vector<float> audioBuf = dspToolbox.sampleInterp(physBuf.data(),
+			                                   physBuf.size(),
 			                                   sim_rate, params.audio.sampleRate);
 			state.dB = dspToolbox.calculateDecibleLevel(audioBuf);
 			displayLevelBar(state.dB);
