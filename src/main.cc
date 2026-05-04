@@ -4,225 +4,181 @@
 #include <thread>
 #include <cstdlib>
 #include "simDefs.hpp"
-#include "RectangularMembrane.hpp"
-#include "CircularMembrane.hpp"
 #include "drumRenderer.hpp"
 #include "audioEngine.hpp"
-#include "audioDSP.hpp"
+#include "physicsThread.hpp"
 #include "strikeDefs.hpp"
 
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
 
-int numDBSteps = 110; // from 0 to 100 dB in 1 dB increments
+const int numDBSteps = 110;
 
 struct SimState {
-    CircularMembrane membrane;
-	DrumRenderer* renderer;
-    int simRunning = 0;
-	float dB = 0.0f;
+    PhysicsThread* physThread;
 };
 
 struct KeyStateVars {
-	// Variables that help the rotation of the grid
-	float rotation = -30.0f;
-	float tilt = 15.0f; 
-	bool runAudio = true;
+    float rotation = -30.0f;
+    float tilt     = 15.0f;
+    bool  runAudio = true;
 } keyState;
 
-void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
+void keyCB(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-		keyState.rotation -= 1.0f;
-	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-		keyState.rotation += 1.0f;
-	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		keyState.tilt += 1.0f;
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		keyState.tilt -= 1.0f;
-	if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
-		keyState.runAudio = !keyState.runAudio;
-	
-}
+    if (action != GLFW_PRESS) return;
 
-void mouseCB(GLFWwindow* window, int button, int action, int mods)
-{
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        double x_pos, y_pos;
-        glfwGetCursorPos(window, &x_pos, &y_pos);
+    auto* state = static_cast<SimState*>(glfwGetWindowUserPointer(window));
 
-        // Convert screen coords to normalized coordinates
-        float ndcX = (float)(2.0 * x_pos / WIDTH  - 1.0);
-        float ndcY = (float)(1.0 - 2.0 * y_pos / HEIGHT);
-
-        // Reconstruct the same matrices used in the render loop
-        glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(keyState.rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 view  = glm::rotate(
-                              glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.5f)),
-                              glm::radians(keyState.tilt), glm::vec3(1.0f, 0.0f, 0.0f));
-        glm::mat4 proj  = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
-
-        // Unproject NDC point into a view-space ray direction, then into world space
-        glm::vec4 rayView = glm::inverse(proj) * glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
-        rayView = glm::vec4(rayView.x, rayView.y, -1.0f, 0.0f); // direction vector
-
-        glm::mat4 invView   = glm::inverse(view);
-        glm::vec3 rayDir    = glm::normalize(glm::vec3(invView * rayView));
-        glm::vec3 rayOrigin = glm::vec3(invView * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-
-        // Intersect ray with the membrane plane (y=0 in world space).
-        // Model only rotates around Y so the XZ plane is preserved in world space.
-        if (std::abs(rayDir.y) < 1e-6f) return;
-        float t = -rayOrigin.y / rayDir.y;
-        if (t < 0.0f) return;
-
-        // Transform the hit point into model space and check it is inside the membrane (radius = 1.0)
-        glm::vec3 hitModel = glm::vec3(glm::inverse(model) * glm::vec4(rayOrigin + t * rayDir, 1.0f));
-        float radius = hitModel.x * hitModel.x + hitModel.z * hitModel.z;
-		float theta = std::atan2(hitModel.z, hitModel.x);
-		if (theta < 0.0f) theta += 2.0f * M_PI; // atan2 returns [-pi, pi], convert to [0, 2pi]
-
-		if (radius > 1.0f) return;
-
-		StrikeDefs strike;
-		strike.amplitude = 1.0f;
-		strike.rPos = radius;
-		strike.thetaPos = theta;
-		
-        auto* state = static_cast<SimState*>(glfwGetWindowUserPointer(window));
-        state->membrane.setInitialCondition(&strike);
-        state->simRunning = true;
-		state->dB = 0.0f;
+    switch (key) {
+        case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window, true);  break;
+        case GLFW_KEY_LEFT:   keyState.rotation -= 1.0f;               break;
+        case GLFW_KEY_RIGHT:  keyState.rotation += 1.0f;               break;
+        case GLFW_KEY_UP:     keyState.tilt     += 1.0f;               break;
+        case GLFW_KEY_DOWN:   keyState.tilt     -= 1.0f;               break;
+        case GLFW_KEY_M:
+            keyState.runAudio = !keyState.runAudio;
+            state->physThread->setRunAudio(keyState.runAudio);
+            break;
+        default: break;
     }
 }
-void appSettings(){
-	std::cout << std::endl;
-	std::cout << "--------------- Welcome to the Drum Machine! ----------------" << std::endl;
-	std::cout << "Controls:" << std::endl;
-	std::cout << "  Click membrane to strike and start simulation" << std::endl;
-	std::cout << "  Arrow keys (↑↓ & ←→) to rotate/tilt view" << std::endl;
-	std::cout << "  M key to toggle audio on/off" << std::endl;
-	std::cout << "  ESC to quit" << std::endl;
-	std::cout << "-------------------------------------------------------------" << std::endl;
 
-	std::string dbScale(numDBSteps, ' ');
-	dbScale = "[" + dbScale + "]";
-	std::cout << "\r" << dbScale.c_str() << -numDBSteps << " dB" << std::flush;
+void mouseCB(GLFWwindow* window, int button, int action, int /*mods*/)
+{
+    if (button != GLFW_MOUSE_BUTTON_LEFT || action != GLFW_PRESS) return;
+
+    double x_pos, y_pos;
+    glfwGetCursorPos(window, &x_pos, &y_pos);
+
+    float ndcX = (float)(2.0 * x_pos / WIDTH  - 1.0);
+    float ndcY = (float)(1.0 - 2.0 * y_pos / HEIGHT);
+
+    glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(keyState.rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view  = glm::rotate(
+                          glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.5f)),
+                          glm::radians(keyState.tilt), glm::vec3(1.0f, 0.0f, 0.0f));
+    glm::mat4 proj  = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
+
+    glm::vec4 rayView   = glm::inverse(proj) * glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
+    rayView             = glm::vec4(rayView.x, rayView.y, -1.0f, 0.0f);
+    glm::mat4 invView   = glm::inverse(view);
+    glm::vec3 rayDir    = glm::normalize(glm::vec3(invView * rayView));
+    glm::vec3 rayOrigin = glm::vec3(invView * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+    if (std::abs(rayDir.y) < 1e-6f) return;
+    float t = -rayOrigin.y / rayDir.y;
+    if (t < 0.0f) return;
+
+    glm::vec3 hitModel = glm::vec3(glm::inverse(model) * glm::vec4(rayOrigin + t * rayDir, 1.0f));
+    float radius = hitModel.x * hitModel.x + hitModel.z * hitModel.z;
+    float theta  = std::atan2(hitModel.z, hitModel.x);
+    if (theta < 0.0f) theta += 2.0f * (float)M_PI;
+    if (radius > 1.0f) return;
+
+    StrikeDefs strike;
+    strike.amplitude = 1.0f;
+    strike.rPos      = radius;
+    strike.thetaPos  = theta;
+
+    auto* state = static_cast<SimState*>(glfwGetWindowUserPointer(window));
+    state->physThread->enqueueStrike(strike);
+}
+
+void appSettings() {
+    std::cout << "\n--------------- Welcome to the Drum Machine! ----------------\n";
+    std::cout << "Controls:\n";
+    std::cout << "  Click membrane to strike and start simulation\n";
+    std::cout << "  Arrow keys (↑↓ & ←→) to rotate/tilt view\n";
+    std::cout << "  M key to toggle audio on/off\n";
+    std::cout << "  ESC to quit\n";
+    std::cout << "-------------------------------------------------------------\n";
+
+    std::string dbScale(numDBSteps, ' ');
+    dbScale = "[" + dbScale + "]";
+    std::cout << "\r" << dbScale << -numDBSteps << " dB" << std::flush;
 }
 
 void displayLevelBar(float dB) {
-
-	//each # indicates 1 dB
-	int barsToShow = std::abs((int)dB); // shift dB so that -60dB is 0 bars, and 0dB is 60 bars
-	std::string levelStr(numDBSteps - barsToShow, '#'); // Block character representation
-	//concat the remaining string with spaces
-	levelStr += std::string(barsToShow, ' ');
-	levelStr = "[" + levelStr; // Add left boundary
-	levelStr += "]"; // Add right boundary
-	std::cout << "\r" << levelStr << dB << " dB" << std::flush;
-
+    int barsToShow = std::abs((int)dB);
+    std::string levelStr(numDBSteps - barsToShow, '#');
+    levelStr += std::string(barsToShow, ' ');
+    levelStr  = "[" + levelStr + "]";
+    std::cout << "\r" << levelStr << dB << " dB" << std::flush;
 }
 
 int main(void) {
-	// Make OpenMP worker threads sleep between parallel regions instead of spin-waiting.
-	// Must be set before the first OMP parallel region initializes the thread pool.
-	#if defined(_WIN32) || defined(_WIN64)
-	    _putenv("OMP_WAIT_POLICY=passive");
-	#else
-	setenv("OMP_WAIT_POLICY", "passive", 1);
-	#endif
+#if defined(_WIN32) || defined(_WIN64)
+    _putenv("OMP_WAIT_POLICY=passive");
+#else
+    setenv("OMP_WAIT_POLICY", "passive", 1);
+#endif
 
-	// Initialize audio engine
-	AudioEngine audio;
-	audio.start();
+    // Audio engine must outlive the physics thread (LIFO destruction order).
+    AudioEngine   audio;
+    PhysicsThread physThread(audio);
 
-	// Init DSP toolbox
-	AudioDSP_Toolbox dspToolbox;
+    audio.start();
+    physThread.start();
 
-	// Initialize rendering engine
-   	DrumRenderer drumGui(WIDTH,HEIGHT,"Drum Machine");
-   	if(!drumGui.init()){
-		std::cerr << "Failed to initialize Drum Machine" << std::endl;
-   	}
+    DrumRenderer drumGui(WIDTH, HEIGHT, "Drum Machine");
+    if (!drumGui.init()) {
+        std::cerr << "Failed to initialize Drum Machine\n";
+        return 1;
+    }
 
-	appSettings();
+    appSettings();
 
-	// Input handling
-	SimState state;
-	state.membrane.init((float)RADIUS, (float)TENSION, (float)MATERIAL_DENSITY, GRID_R, GRID_TH);
-	float SIM_RATE = state.membrane.getSimRate();
-	//Determine number of physics steps to run per frame based on the ratio of the simulation rate to the audio sample rate, and the audio buffer size. 
-	//This ensures that we produce enough audio samples for each chunk we push to the audio engine, while keeping the physics simulation in sync with the audio output.
-	int physSteps = std::max(1, (int)std::ceil((double)BUFFER_SIZE * SIM_RATE / SAMPLE_RATE));
-	glfwSetKeyCallback(drumGui.getWindow(), keyCB);
-	glfwSetWindowUserPointer(drumGui.getWindow(), &state);
-	glfwSetMouseButtonCallback(drumGui.getWindow(), mouseCB);
+    SimState state;
+    state.physThread = &physThread;
 
-   	drumGui.compileShaders("shaders/default.vert","shaders/default.frag");
+    glfwSetKeyCallback(drumGui.getWindow(), keyCB);
+    glfwSetMouseButtonCallback(drumGui.getWindow(), mouseCB);
+    glfwSetWindowUserPointer(drumGui.getWindow(), &state);
 
+    drumGui.compileShaders("shaders/default.vert", "shaders/default.frag");
+    drumGui.enableDepthTest();
+    drumGui.enableBlending();
+    drumGui.setPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	drumGui.enableDepthTest();
-	drumGui.enableBlending();
-	drumGui.setPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glm::mat4 model(1.0f), view(1.0f), proj(1.0f);
 
-	// Initializes matrices so they are not the null matrix
-	glm::mat4 model = glm::mat4(1.0f);
-	glm::mat4 view = glm::mat4(1.0f);
-	glm::mat4 proj = glm::mat4(1.0f);
+    glfwSwapInterval(1);
 
-	glfwSwapInterval(1); // Enable vsync for smoother rendering
-	while (!drumGui.shouldClose()) {
-		auto frameStart = std::chrono::steady_clock::now();
-		drumGui.pollEvents();
-		// Step sim only if running
-		if (state.simRunning){
-			if(state.dB <= -100.0f){
-				state.simRunning = false;
-				state.dB = 0.0f;
-				drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
-				continue;
-			}
-			state.membrane.Simulate(physSteps);
-			std::vector<float> audioBuf;
-			//this decouples the physics simulation rate from the audio output rate by resampling the current simBuf_ chunk to exactly BUFFER_SIZE samples, which is what pushChunk expects
-			audioBuf = dspToolbox.sampleInterp(state.membrane.getPhysicsBuffer().data(),
-			                                   state.membrane.getPhysicsBuffer().size(),
-			                                   SIM_RATE, SAMPLE_RATE);
-			state.dB = dspToolbox.calculateDecibleLevel(audioBuf);
-			displayLevelBar(state.dB);
-			if (keyState.runAudio) {
-				audio.consumeAudio(audioBuf.data(), audioBuf.size());
-			}
-		}
-			
-		// Always update and render
-		drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
-		drumGui.setClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		drumGui.clear();
-		drumGui.activateShaderProgram();
+    while (!drumGui.shouldClose()) {
+        auto frameStart = std::chrono::steady_clock::now();
 
-		model = glm::mat4(1.0f);
-		view  = glm::mat4(1.0f);
-		proj  = glm::mat4(1.0f);
+        drumGui.pollEvents();
 
-		model = glm::rotate(model, glm::radians(keyState.rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-		view  = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.5f));
-		view  = glm::rotate(view, glm::radians(keyState.tilt), glm::vec3(1.0f, 0.0f, 0.0f));
-		proj  = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
+        // Display dB level when simulation is running
+        if (physThread.isSimRunning())
+            displayLevelBar(physThread.getdB());
 
+        // Pull latest vertex data from physics thread and render
+        std::vector<float> verts = physThread.getLatestVertexData();
+        drumGui.updateCircularVertexData(verts);
 
-		drumGui.setMatrices(model, view, proj);
-		drumGui.setUniform1f("scale", 0.5f);
-		drumGui.drawElements();
-		drumGui.swapBuffers();
+        drumGui.setClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        drumGui.clear();
+        drumGui.activateShaderProgram();
 
-		auto frameEnd = std::chrono::steady_clock::now();
-		auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
-		auto frameBudget = std::chrono::milliseconds(16);
-		if (elapsed < frameBudget)
-			std::this_thread::sleep_for(frameBudget - elapsed);
-		}
+        model = glm::rotate(glm::mat4(1.0f), glm::radians(keyState.rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+        view  = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.5f));
+        view  = glm::rotate(view, glm::radians(keyState.tilt), glm::vec3(1.0f, 0.0f, 0.0f));
+        proj  = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
+
+        drumGui.setMatrices(model, view, proj);
+        drumGui.setUniform1f("scale", 0.5f);
+        drumGui.drawElements();
+        drumGui.swapBuffers();
+
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           std::chrono::steady_clock::now() - frameStart);
+        auto budget  = std::chrono::milliseconds(16);
+        if (elapsed < budget)
+            std::this_thread::sleep_for(budget - elapsed);
+    }
+
+    // PhysicsThread destructor stops the thread; AudioEngine destructor stops the stream.
     return 0;
 }

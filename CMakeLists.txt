@@ -34,6 +34,7 @@ set(SOURCES
     src/frontend/drumRenderer.cc
     src/backend/physics/head/CircularMembrane.cc
     src/backend/physics/head/RectangularMembrane.cc
+    src/backend/physics/physicsThread.cc
     src/backend/audio/engine/audioEngine.cc
     src/backend/audio/dsp/audioDSP.cc
     src/3rdparty/glad.c

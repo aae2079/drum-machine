@@ -1,40 +1,44 @@
 #ifndef AUDIO_ENGINE_HPP
 #define AUDIO_ENGINE_HPP
 
-#include <vector>
 #include <iostream>
-#include <atomic>
 #include <cstring>
 #include "portaudio.h"
-#include "simDefs.hpp"
 #include "audioDefs.hpp"
+#include "audioPacket.hpp"
+#include "spscRingBuffer.hpp"
 
 class AudioEngine {
 public:
     AudioEngine(float sampleRate = SAMPLE_RATE, int bufferSize = BUFFER_SIZE);
     ~AudioEngine();
+
     void start();
     void stop();
-    void delay();
-    void consumeAudio(const float* buffer, size_t numSamples);
+
+    // Called by PhysicsThread to push a resampled, ready-to-play packet.
+    // Returns false when the ring buffer is full (caller should retry).
+    bool pushPacket(const AudioPacket& pkt);
+
 private:
-    PaStream *stream;
-    PaStream *mainStream = nullptr;
-    PaStreamParameters outputParameters;
-    PaError err;
+    static int  paStreamCB(const void* in, void* out, unsigned long frames,
+                           const PaStreamCallbackTimeInfo*, PaStreamCallbackFlags, void* ud);
+    static void paStreamFinished(void* ud);
+    int internalAudioCB(void* out, unsigned long frames);
 
-    static int paStreamCB(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
-                              const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userData);
-    static void paStreamFinished(void *userData);
-    
-    int internalAudioCB(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
-                    const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userData);
+    PaStream*           mainStream_ = nullptr;
+    PaStreamParameters  outputParameters_;
+    PaError             err_;
 
+    // SPSC ring buffer: physics thread produces, PortAudio callback consumes.
+    SPSCRingBuffer<AudioPacket, 16> packetBuf_;
 
-    std::vector<float> audio_buffer; 
+    // Partially-consumed packet held across callback invocations (callback thread only).
+    AudioPacket currentPkt_{};
+    size_t      packetOffset_ = 0;
 
     float _sampleRate;
-    int _bufferSize;
-
+    int   _bufferSize;
 };
+
 #endif // AUDIO_ENGINE_HPP
