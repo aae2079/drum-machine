@@ -2,8 +2,8 @@
 #define DRUM_MACHINE_SIM_DEFS_H
 
 #include "audioDefs.hpp"
+#include "CircularMembrane.hpp"
 
-#define CFL 0.2  // Courant-Friedrichs-Lewy condition for stability
 
 #if defined(_WIN32) || defined(_WIN64)
     #define M_PI 3.14159265358979323846

@@ -1,6 +1,7 @@
 {
     "audio": {
-        "sample_rate": 24000.0,
+        "sample_rate": 48000.0,
+        "buffer_size": 512,
         "bit_depth": 16,
         "num_channels": 1,
         "audio_format_pcm": 1

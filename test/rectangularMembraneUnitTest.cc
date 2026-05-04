@@ -25,13 +25,7 @@ void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &
 }
 
 int main(int argc, char** argv){
-
-    if (argc < 2){
-        std::cout << "Usage: " << argv[0] << " simulation time in seconds(int) ex: 2" << std::endl;
-        return -1;
-    }
-    std::string input;
-    int sim_time = std::stoi(argv[1]);
+    int sim_time = 1;
     int num_samples = sim_time * SAMPLE_RATE;
     int sampsProc = 0;
 
@@ -44,7 +38,7 @@ int main(int argc, char** argv){
     std::vector<float> audio_buffer;
     std::vector<int16_t> int16_buffer;
 
-    RectangularMembrane membrane;
+    RectangularMembrane membrane(GRID_X, GRID_Y, 1.5f, 100.0f, 0.001f, sim_time);
     //Real-time mechanicism 
     while (sampsProc < num_samples) {
         auto start = std::chrono::high_resolution_clock::now();

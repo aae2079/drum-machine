@@ -3,9 +3,9 @@
 
 
 typedef struct {
-    int subchunk1Size;
     int audioFormatPCM;
     float sampleRate;
+    int bufferSize;
     int bitDepth;
     int numChannels;
     int byteRate;

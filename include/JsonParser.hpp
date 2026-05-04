@@ -6,14 +6,27 @@
 #include "simDefs.hpp"
 #include "rapidjson/document.h"
 #include "rapidjson/error/en.h"
+#include "rapidjson/filereadstream.h"
+#include <cstdio>
 
 
 static bool parseJsonSettings(const std::string& filename, Params& params) {
+    FILE *fp = fopen(filename.c_str(), "r");
+    if (!fp){
+        std::cerr << "Could not open file: " << filename << std::endl;
+        return false;
+    }
+    char readBuffer[65536];
+    rapidjson::FileReadStream is(fp, readBuffer, sizeof(readBuffer));
     rapidjson::Document doc;
-    if (!doc.Parse(filename.c_str()).HasParseError()) {
+    doc.ParseStream(is);
+    fclose(fp);
+
+    if (!doc.HasParseError()) {
         if (doc.HasMember("audio") && doc["audio"].IsObject()) {
             const auto& audio = doc["audio"];
             params.audio.sampleRate = audio["sample_rate"].GetFloat();
+            params.audio.bufferSize = audio["buffer_size"].GetInt();
             params.audio.bitDepth = audio["bit_depth"].GetInt();
             params.audio.numChannels = audio["num_channels"].GetInt();
             params.audio.audioFormatPCM = audio["audio_format_pcm"].GetInt();
@@ -28,10 +41,10 @@ static bool parseJsonSettings(const std::string& filename, Params& params) {
             params.timbre.radius = timbre["radius"].GetFloat();
             params.timbre.damping = timbre["damping"].GetFloat();
         }
-        if (doc.HasMember("grid") && doc["grid"].IsObject()) {
-            const auto& grid = doc["grid"];
-            params.grid.grid_r = grid["grid_r"].GetUint();
-            params.grid.grid_th = grid["grid_th"].GetUint();
+        if (doc.HasMember("dimensions") && doc["dimensions"].IsObject()) {
+            const auto& dimensions = doc["dimensions"];
+            params.grid.grid_r = dimensions["grid_r"].GetUint();
+            params.grid.grid_th = dimensions["grid_th"].GetUint();
         }
         return true;
     } else {
