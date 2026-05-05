@@ -130,6 +130,6 @@ target_compile_options(test_rectangular_membrane PRIVATE
 
 add_test(
     NAME RectangularMembraneTest
-    COMMAND test_rectangular_membrane 2
+    COMMAND test_rectangular_membrane ${CMAKE_SOURCE_DIR}/config/drum_config.json
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
