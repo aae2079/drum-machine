@@ -4,6 +4,7 @@
 #include "wav.hpp"
 #include "simDefs.hpp"
 #include "audioEngine.hpp"
+#include "JsonParser.hpp"
 #include <fstream>
 #include <cstdint>
 #include <chrono>
@@ -12,8 +13,8 @@
 #include <cstring>
 #include <string>
 
-#define WAVE_FILE 0
-#define PORT_AUDIO 1
+#define WAVE_FILE 1
+#define PORT_AUDIO 0
 
 int firstTime = 1;
 
@@ -25,8 +26,18 @@ void convertFloatToInt16(const std::vector<float> &input, std::vector<int16_t> &
 }
 
 int main(int argc, char** argv){
+
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <config_file.json>" << std::endl;
+        return 1;
+    }
+
+    Params params;
+
+    parseJsonSettings(argv[1], params);
+    AudioDefinitions& audioDefs = params.audio;
     int sim_time = 1;
-    int num_samples = sim_time * SAMPLE_RATE;
+    int num_samples = sim_time * audioDefs.sampleRate;
     int sampsProc = 0;
 
     #if PORT_AUDIO
@@ -60,7 +71,7 @@ int main(int argc, char** argv){
         #if WAVE_FILE
         // Append current audio buffer to the main audio buffer
         //Be aware of overlap!
-        audio_buffer.insert(audio_buffer.end(), membrane.getAudioBuffer().begin(), membrane.getAudioBuffer().end()-(int)OVERLAP);
+        audio_buffer.insert(audio_buffer.end(), membrane.getAudioBuffer().begin(), membrane.getAudioBuffer().end());
         convertFloatToInt16(audio_buffer, int16_buffer);
         #endif
         
@@ -68,7 +79,7 @@ int main(int argc, char** argv){
         #if PORT_AUDIO
         audio.delay();
         #endif
-        sampsProc += BUFFER_SIZE; // Account for overlap
+        sampsProc += audioDefs.bufferSize; // Account for overlap
     } 
 
     // Build wav file
@@ -80,7 +91,7 @@ int main(int argc, char** argv){
     head.riff[1] = 'I';
     head.riff[2] = 'F';
     head.riff[3] = 'F';
-    head.chunkSize = 36 + audio_buffer.size() * NUM_CHANNELS * BIT_DEPTH/8;
+    head.chunkSize = 36 + audio_buffer.size() * audioDefs.numChannels * audioDefs.bitDepth/8;
 
     head.wave[0] = 'W';
     head.wave[1] = 'A';
@@ -91,20 +102,20 @@ int main(int argc, char** argv){
     head.fmt[2] = 't';
     head.fmt[3] = ' ';
 
-    head.subchunk1Size = SUBCHUNK1SIZE;
-    head.audioFormat = AUDIO_FORMAT_PCM;
-    head.numChannels = NUM_CHANNELS;
-    head.sampleRate = SAMPLE_RATE;
-    head.byteRate = BYTE_RATE;
-    head.blockAlign = BLOCK_ALIGN;
-    head.bitsPerSample = BIT_DEPTH;
+    head.subchunk1Size = 16; // PCM
+    head.audioFormat = audioDefs.audioFormatPCM;
+    head.numChannels = audioDefs.numChannels;
+    head.sampleRate = audioDefs.sampleRate;
+    head.byteRate = audioDefs.byteRate;
+    head.blockAlign = audioDefs.blockAlign;
+    head.bitsPerSample = audioDefs.bitDepth;
 
     head.subchunk2ID[0] = 'd';
     head.subchunk2ID[1] = 'a';
     head.subchunk2ID[2] = 't';
     head.subchunk2ID[3] = 'a';
     
-    head.subchunk2Size = audio_buffer.size() * BIT_DEPTH/8;
+    head.subchunk2Size = audio_buffer.size() * audioDefs.bitDepth/8;
 
 
     std::ofstream outFile;
