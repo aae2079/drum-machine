@@ -10,26 +10,21 @@
 #include "audioEngine.hpp"
 #include "audioDSP.hpp"
 #include "strikeDefs.hpp"
-
-float SIM_RATE; // global variable to hold the simulation sample rate, will be set by CircularMembrane init and used by main loop for upsampling
+#include "JsonParser.hpp"
 
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
-int firstTime = 1;
 bool simRunning = false; //sim doesnt run on startup, waits for user to click membrane to strike and start simulating
 bool runAudio = true;
 // Variables that help the rotation of the grid
 float rotation = -30.0f;
 float tilt = 15.0f;
 
-
 int numDBSteps = 110; // from 0 to 100 dB in 1 dB increments
 
 typedef struct {
-    CircularMembrane membrane;
-    int simRunning = 0;
-	float dB = 0.0f;
-}SimState;
+
+} KeyEventState;
 
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -126,7 +121,7 @@ void displayLevelBar(float dB) {
 
 }
 
-int main(void) {
+int main(int argc, char** argv) {
 	// Make OpenMP worker threads sleep between parallel regions instead of spin-waiting.
 	// Must be set before the first OMP parallel region initializes the thread pool.
 	#if defined(_WIN32) || defined(_WIN64)
@@ -135,31 +130,40 @@ int main(void) {
 	setenv("OMP_WAIT_POLICY", "passive", 1);
 	#endif
 
+	if (argc < 2){
+		std::cerr << "Usage: " << argv[0] << " drum_config.json" << std::endl;
+		return -1;
+	}
+	Params params;
+	parseJsonSettings(argv[1], params);
+
 	// Initialize audio engine
-	AudioEngine audio;
+	AudioEngine audio(params.audio.sampleRate, params.audio.bufferSize);
 	audio.start();
 
 	// Init DSP toolbox
 	AudioDSP_Toolbox dspToolbox;
 
 	// Initialize rendering engine
-   	DrumRenderer drumGui(WIDTH,HEIGHT,"Drum Machine");
+   	DrumRenderer drumGui(WIDTH,HEIGHT,params.grid.grid_r, params.grid.grid_th,"Drum Machine");
    	if(!drumGui.init()){
 		std::cerr << "Failed to initialize Drum Machine" << std::endl;
    	}
 
 	appSettings();
 
+
 	// Input handling
 	SimState state;
-	state.membrane.init((float)RADIUS, (float)TENSION, (float)MATERIAL_DENSITY, GRID_R, GRID_TH);
-	SIM_RATE = state.membrane.getSimRate();
+	state.membrane.init(params.timbre.radius, params.timbre.damping, params.timbre.tension, params.timbre.material_density, params.grid.grid_r, params.grid.grid_th);
+	float sim_rate = state.membrane.getSimRate();
+	int physSteps = std::max(1, (int)std::ceil(params.audio.bufferSize * sim_rate / params.audio.sampleRate));
+
 	glfwSetKeyCallback(drumGui.getWindow(), keyCB);
 	glfwSetWindowUserPointer(drumGui.getWindow(), &state);
 	glfwSetMouseButtonCallback(drumGui.getWindow(), mouseCB);
 
    	drumGui.compileShaders("shaders/default.vert","shaders/default.frag");
-
 
 	drumGui.enableDepthTest();
 	drumGui.enableBlending();
@@ -182,12 +186,12 @@ int main(void) {
 				drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
 				continue;
 			}
-			state.membrane.Simulate();
-			std::vector<float> audioBuf;
+			std::vector<float> physBuf(physSteps, 0.0f);
+			state.membrane.Simulate(physSteps, physBuf);
 			//this decouples the physics simulation rate from the audio output rate by resampling the current simBuf_ chunk to exactly BUFFER_SIZE samples, which is what pushChunk expects
-			audioBuf = dspToolbox.sampleInterp(state.membrane.getPhysicsBuffer().data(),
-			                                   state.membrane.getPhysicsBuffer().size(),
-			                                   SIM_RATE, SAMPLE_RATE);
+			std::vector<float> audioBuf = dspToolbox.sampleInterp(physBuf.data(),
+			                                   physBuf.size(),
+			                                   sim_rate, params.audio.sampleRate);
 			state.dB = dspToolbox.calculateDecibleLevel(audioBuf);
 			displayLevelBar(state.dB);
 			if (runAudio){

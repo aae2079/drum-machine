@@ -2,12 +2,15 @@
 #define RECTANGULAR_MEMBRANE_H
 
 
-#include "audioDefs.hpp"
 #include "simDefs.hpp"
 #include <vector>
 #include <cmath>
 #include <omp.h>
 
+#define SAMPLE_RATE 48000
+#define BUFFER_SIZE 512
+#define GRID_X 50
+#define GRID_Y 50
 
 /*
 Class that generates grid and simulates 2d rectangular membrane vibrations
@@ -16,7 +19,7 @@ using finite difference method to solve the wave equation.
 */
 class RectangularMembrane {
     public:
-        RectangularMembrane(int nx=GRID_R, int ny=GRID_TH, float damp = 10.0, float c = 1.0, float time_step = 1.0/SAMPLE_RATE, float sim_time = 1.0);
+        RectangularMembrane(int nx, int ny, float damp, float c, float time_step, float sim_time);
         void setInitialCondition();
         void Simulate();
         ~RectangularMembrane();

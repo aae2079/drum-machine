@@ -5,10 +5,12 @@
 #include <cstddef>
 #include <string>
 #include <cmath>
-#include "simDefs.hpp"
-#include "audioDefs.hpp"
 #include "strikeDefs.hpp"
 
+#define CFL 0.2  // Courant-Friedrichs-Lewy condition for stability
+#if defined(_WIN32) || defined(_WIN64)
+    #define M_PI 3.14159265358979323846
+#endif
 
 class CircularMembrane {
 public:
@@ -16,29 +18,27 @@ public:
     CircularMembrane();
     ~CircularMembrane();
 
-    void init(float radius, float tension, float rho_density,unsigned int Nr, unsigned int Ntheta);
+    void init(float radius, float damp, float tension, float rho_density,unsigned int Nr, unsigned int Ntheta);
     void cleanup();
 
     std::vector<float>& getCurrentGrid() { return u_curr_; }
-    std::vector<float>& getPhysicsBuffer() { return simBuf_; }
     float& getSimRate() { return simRate_; }
         
     
     void setInitialCondition(const StrikeDefs* strike);
-    void Simulate();
+    void Simulate(int physSteps, std::vector<float>& physBuf);
 
 
 private:
     float radius_;   // meters
-    float tension_;  // N/m
+    float tension_;  // N/m 
+    float damp_;
     float rho_;     // mass density kg/m^2
     float c_;       // wave speed m/s
     float dt_;      // time step s
     float dr_;      // radial step size m
     float dtheta_;  // angular step size radians
     float simRate_; // simulation sample rate (Hz)
-
-    int physSteps_; // number of physics steps to run per audio buffer (derived from simRate_ and SAMPLE_RATE)
 
 
     // Discretization / storage placeholders
@@ -50,7 +50,6 @@ private:
     std::vector<float> u_next_; // membrane state at next time step
     std::vector<float> simBuf_; // buffer for current simulation chunk
     
-    int firstTime; // flag for first time processing
 
 };
 

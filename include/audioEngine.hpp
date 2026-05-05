@@ -7,7 +7,6 @@
 #include <cstring>
 #include "portaudio.h"
 #include "simDefs.hpp"
-#include "audioDefs.hpp"
 
 #define NUM_FRAMES 10
 
@@ -18,7 +17,7 @@ struct Data{
 
 class AudioEngine {
 public:
-    AudioEngine(int sampleRate = SAMPLE_RATE, int bufferSize = BUFFER_SIZE);
+    AudioEngine(int sampleRate = 48000, int bufferSize = 512);
     ~AudioEngine();
     void start();
     void stop();

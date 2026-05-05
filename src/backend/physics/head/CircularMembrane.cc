@@ -17,9 +17,10 @@ CircularMembrane::~CircularMembrane() {
     u_next_.clear();
     simBuf_.clear();
 }
-void CircularMembrane::init(float radius, float tension, float rho_density, unsigned int Nr, unsigned int Ntheta){
+void CircularMembrane::init(float radius, float damp, float tension, float rho_density, unsigned int Nr, unsigned int Ntheta){
     radius_ = radius;
     tension_ = tension;
+    damp_ = damp;
     rho_ = rho_density;
     Nr_ = Nr;
     Ntheta_ = Ntheta;
@@ -33,8 +34,6 @@ void CircularMembrane::init(float radius, float tension, float rho_density, unsi
     u_prev_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_curr_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_next_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
-    physSteps_ = std::max(1, (int)std::ceil((double)BUFFER_SIZE * simRate_ / SAMPLE_RATE));
-    simBuf_ = std::vector<float>(physSteps_, 0.0f);
 
     // Dirichlet fixed outer boundary: all angular positions at r = Nr_-1
     for (int jj = 0; jj < Ntheta_; jj++) {
@@ -74,11 +73,10 @@ void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
     }
 }
 
-void CircularMembrane::Simulate(){
+void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
     // Run exactly enough physics steps to cover one audio buffer's worth of time.
-    // sampleInterp() on simBuf_ will then produce exactly BUFFER_SIZE audio samples.
-    std::vector<float> curBuf(physSteps_, 0.0f);
-    for(int tt = 0; tt < physSteps_; tt++){
+    // sampleInterp() on simBuf_ will then produce exactly BUFFER_SIZE audio sample
+    for(int tt = 0; tt < physSteps; tt++){
         // --- spatial update ----
         #pragma omp parallel for schedule(static)
         for (int ii = 1; ii < Nr_ - 1; ii++){
@@ -105,7 +103,7 @@ void CircularMembrane::Simulate(){
                 }
                 float laplacian = d2u_dr2 + term_r + term_theta;
 
-                float gamma_dt = DAMPING * dt_;
+                float gamma_dt = damp_ * dt_;
                 u_next_[ii * Ntheta_ + jj] = (2.0f * u_curr_[ii * Ntheta_ + jj]
                     - u_prev_[ii * Ntheta_ + jj] * (1.0f - gamma_dt)
                     + (c_ * c_ * dt_ * dt_) * laplacian) / (1.0f + gamma_dt);
@@ -127,7 +125,7 @@ void CircularMembrane::Simulate(){
             u_next_[0 * Ntheta_ + jj] = avg;
         }
         //sample audio at center of membrane
-        curBuf[tt] = 15.0f * u_curr_[0]; // center point r=0, all theta the same
+        physBuf[tt] = 15.0f * u_curr_[0]; // center point r=0, all theta the same
         //advance  simulation
         std::swap(u_prev_, u_curr_);
         std::swap(u_curr_, u_next_);
@@ -138,9 +136,7 @@ void CircularMembrane::Simulate(){
             break;
         }
 
- 
     }
-    simBuf_ = std::move(curBuf);
 }
 
 
