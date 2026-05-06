@@ -1,8 +1,11 @@
 #include <iostream>
 #include <vector>
+#include <queue>
 #include <chrono>
 #include <thread>
 #include <cstdlib>
+#include <mutex>
+#include<condition_variable>
 #include "simDefs.hpp"
 #include "RectangularMembrane.hpp"
 #include "CircularMembrane.hpp"
@@ -22,10 +25,11 @@ float tilt = 15.0f;
 
 int numDBSteps = 110; // from 0 to 100 dB in 1 dB increments
 
-typedef struct {
+std::queue<StrikeDefs> strikeQueue;
+std::mutex mtx;
+std::condition_variable cv;
 
-} KeyEventState;
-
+//openGl functions for handling user input
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -42,7 +46,6 @@ void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 		runAudio = !runAudio;
 	
 }
-
 void mouseCB(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
@@ -82,15 +85,16 @@ void mouseCB(GLFWwindow* window, int button, int action, int mods)
 
 		if (radius > 1.0f) return;
 
-		StrikeDefs strike;
-		strike.amplitude = 1.0f;
-		strike.rPos = radius;
-		strike.thetaPos = theta;
-		
-        auto* state = static_cast<SimState*>(glfwGetWindowUserPointer(window));
-        state->membrane.setInitialCondition(&strike);
-        state->simRunning = true;
-		state->dB = 0.0f;
+		StrikeDefs currStrike;
+		currStrike.amplitude = 1.0f; // could be based on how close
+		currStrike.rPos = radius;
+		currStrike.thetaPos = theta;
+
+		//mutex 
+		std::lock_guard<std::mutex> lock(mtx);
+		strikeQueue.push(currStrike);
+		cv.notify_one();
+
     }
 }
 void appSettings(){
@@ -103,21 +107,20 @@ void appSettings(){
 	std::cout << "  ESC to quit" << std::endl;
 	std::cout << "-------------------------------------------------------------" << std::endl;
 
-	std::string dbScale(numDBSteps, ' ');
-	dbScale = "[" + dbScale + "]";
-	std::cout << "\r" << dbScale.c_str() << -numDBSteps << " dB" << std::flush;
+// 	std::string dbScale(numDBSteps, ' ');
+// 	dbScale = "[" + dbScale + "]";
+// 	std::cout << "\r" << dbScale.c_str() << -numDBSteps << " dB" << std::flush;
 }
 
-void displayLevelBar(float dB) {
+void physicsEngine(){
 
-	//each # indicates 1 dB
-	int barsToShow = std::abs((int)dB); // shift dB so that -60dB is 0 bars, and 0dB is 60 bars
-	std::string levelStr(numDBSteps - barsToShow, '#'); // Block character representation
-	//concat the remaining string with spaces
-	levelStr += std::string(barsToShow, ' ');
-	levelStr = "[" + levelStr; // Add left boundary
-	levelStr += "]"; // Add right boundary
-	std::cout << "\r" << levelStr << dB << " dB" << std::flush;
+	while(true){
+		std::unique_lock<std::mutex> lock(mtx);
+		cv.wait(lock, []{ return !strikeQueue.empty(); });
+		StrikeDefs strike = strikeQueue.front();
+		strikeQueue.pop();
+		//Process data
+	}
 
 }
 
@@ -137,12 +140,12 @@ int main(int argc, char** argv) {
 	Params params;
 	parseJsonSettings(argv[1], params);
 
-	// Initialize audio engine
+	// Initialize audio engine - starts PA thread
 	AudioEngine audio(params.audio.sampleRate, params.audio.bufferSize);
 	audio.start();
 
-	// Init DSP toolbox
-	AudioDSP_Toolbox dspToolbox;
+	std::thread physics_thread(physicsEngine);
+
 
 	// Initialize rendering engine
    	DrumRenderer drumGui(WIDTH,HEIGHT,params.grid.grid_r, params.grid.grid_th,"Drum Machine");
@@ -151,13 +154,6 @@ int main(int argc, char** argv) {
    	}
 
 	appSettings();
-
-
-	// Input handling
-	SimState state;
-	state.membrane.init(params.timbre.radius, params.timbre.damping, params.timbre.tension, params.timbre.material_density, params.grid.grid_r, params.grid.grid_th);
-	float sim_rate = state.membrane.getSimRate();
-	int physSteps = std::max(1, (int)std::ceil(params.audio.bufferSize * sim_rate / params.audio.sampleRate));
 
 	glfwSetKeyCallback(drumGui.getWindow(), keyCB);
 	glfwSetWindowUserPointer(drumGui.getWindow(), &state);
@@ -193,7 +189,6 @@ int main(int argc, char** argv) {
 			                                   physBuf.size(),
 			                                   sim_rate, params.audio.sampleRate);
 			state.dB = dspToolbox.calculateDecibleLevel(audioBuf);
-			displayLevelBar(state.dB);
 			if (runAudio){
 				audio.pushChunk(audioBuf.data(), audioBuf.size());
 				audio.delay();
@@ -223,8 +218,9 @@ int main(int argc, char** argv) {
 		auto frameEnd = std::chrono::steady_clock::now();
 		auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
 		auto frameBudget = std::chrono::milliseconds(16);
-		if (elapsed < frameBudget)
-			std::this_thread::sleep_for(frameBudget - elapsed);
-		}
+		if (elapsed < frameBudget) std::this_thread::sleep_for(frameBudget - elapsed);
+	}
+
+	physics_thread.join();
     return 0;
 }
