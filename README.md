@@ -178,6 +178,11 @@ The Gaussian width is controlled inside `CircularMembrane::setInitialCondition()
 
 ## Architecture
 
+<p align="center">
+   <img src="https://github.com/user-attachments/assets/5b312b35-5778-4805-91d1-baece7332942" />
+</p>
+*Architecture Designed by Aaron Escobar. Diagram generated using Claude
+
 ### CircularMembrane (Physics)
 - Solves the 2D wave equation in polar coordinates (radial + angular)
 - Stores 3 flat grids (`u_prev_`, `u_curr_`, `u_next_`) indexed as `[ir * Ntheta_ + itheta]`
