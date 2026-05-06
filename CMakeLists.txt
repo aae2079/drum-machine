@@ -38,18 +38,17 @@ set(SOURCES
     src/3rdparty/glad.c
 )
 
-# set(HEADERS
-#     include/CircularMembrane.hpp
-#     include/RectangularMembrane.hpp
-#     include/Surface.hpp
-#     include/audioDefs.hpp
-#     include/audioDSP.hpp
-#     include/strikeDefs.hpp
-#     include/drumRenderer.hpp
-#     dependencies/glad/glad.h
-#     dependencies/KHR/khrplatform.h
-#     #/usr/include/portaudio.h
-# )
+set(HEADERS
+    include/CircularMembrane.hpp
+    include/RectangularMembrane.hpp
+    include/Surface.hpp
+    include/audioDefs.hpp
+    include/audioDSP.hpp
+    include/strikeDefs.hpp
+    include/drumRenderer.hpp
+    dependencies/glad/glad.h
+    dependencies/KHR/khrplatform.h
+)
 
 # Create executable
 add_executable(drum-machine ${SOURCES} ${HEADERS})
