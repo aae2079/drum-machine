@@ -76,12 +76,12 @@ drum-machine/
 
 **macOS**:
 ```bash
-brew install cmake glfw portaudio glm
+brew install cmake glfw portaudio glm rapidjson-dev
 ```
 
 **Linux (Ubuntu/Debian)**:
 ```bash
-sudo apt-get install cmake libglfw3-dev portaudio19-dev libglm-dev
+sudo apt-get install cmake libglfw3-dev portaudio19-dev libglm-dev rapidjson-dev
 ```
 
 **Clone Repo**:
@@ -103,15 +103,18 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build .
 ```
 
-### Run
-
+If built manually run the following cmds:
 ```bash
 cd build/bin/
-mkdir -p shaders/
+mkdir -p shaders/ config/
 ln -sf ../../src/frontend/default* shaders/
-./drum-machine
+ln -sf ../../config/* config/
 ```
 
+### Run
+```bash
+./drum-machine config/drum_config.json
+```
 ## Controls
 
 ### Simulation
