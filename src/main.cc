@@ -112,14 +112,19 @@ void appSettings(){
 // 	std::cout << "\r" << dbScale.c_str() << -numDBSteps << " dB" << std::flush;
 }
 
-void physicsEngine(){
-
+void physicsEngine(Params params){
+	CircularMembrane membrane(params.timbre.radius, params.timbre.damping, params.timbre.tension, params.timbre.material_density, params.grid.grid_r, params.grid.grid_th);
+	int physSteps = (int)(params.audio.sampleRate * params.audio.bufferSize / membrane.getSimRate()) + 1; //number of physics steps to run for each audio buffer's worth of time
 	while(true){
 		std::unique_lock<std::mutex> lock(mtx);
 		cv.wait(lock, []{ return !strikeQueue.empty(); });
 		StrikeDefs strike = strikeQueue.front();
 		strikeQueue.pop();
 		//Process data
+		membrane.setInitialCondition(&strike);
+		std::vector<float> physBuf(physSteps, 0.0f);
+		membrane.Simulate(physSteps, physBuf);
+		std::cout << "There is data to process! Strike at r = " << strike.rPos << ", theta = " << strike.thetaPos << std::endl;
 	}
 
 }
@@ -175,25 +180,25 @@ int main(int argc, char** argv) {
 		auto frameStart = std::chrono::steady_clock::now();
 		drumGui.pollEvents();
 		// Step sim only if running
-		if (state.simRunning){
-			if(state.dB <= -100.0f){
-				state.simRunning = false;
-				state.dB = 0.0f;
-				drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
-				continue;
-			}
-			std::vector<float> physBuf(physSteps, 0.0f);
-			state.membrane.Simulate(physSteps, physBuf);
-			//this decouples the physics simulation rate from the audio output rate by resampling the current simBuf_ chunk to exactly BUFFER_SIZE samples, which is what pushChunk expects
-			std::vector<float> audioBuf = dspToolbox.sampleInterp(physBuf.data(),
-			                                   physBuf.size(),
-			                                   sim_rate, params.audio.sampleRate);
-			state.dB = dspToolbox.calculateDecibleLevel(audioBuf);
-			if (runAudio){
-				audio.pushChunk(audioBuf.data(), audioBuf.size());
-				audio.delay();
-			}
-		}
+		// if (state.simRunning){
+		// 	if(state.dB <= -100.0f){
+		// 		state.simRunning = false;
+		// 		state.dB = 0.0f;
+		// 		drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
+		// 		continue;
+		// 	}
+		// 	std::vector<float> physBuf(physSteps, 0.0f);
+		// 	state.membrane.Simulate(physSteps, physBuf);
+		// 	//this decouples the physics simulation rate from the audio output rate by resampling the current simBuf_ chunk to exactly BUFFER_SIZE samples, which is what pushChunk expects
+		// 	std::vector<float> audioBuf = dspToolbox.sampleInterp(physBuf.data(),
+		// 	                                   physBuf.size(),
+		// 	                                   sim_rate, params.audio.sampleRate);
+		// 	state.dB = dspToolbox.calculateDecibleLevel(audioBuf);
+		// 	if (runAudio){
+		// 		audio.pushChunk(audioBuf.data(), audioBuf.size());
+		// 		audio.delay();
+		// 	}
+		// }
 			
 		// Always update and render
 		drumGui.updateCircularVertexData(state.membrane.getCurrentGrid());
