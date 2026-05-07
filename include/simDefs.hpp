@@ -9,11 +9,11 @@
     #define M_PI 3.14159265358979323846
 #endif
 
-typedef struct {
-    CircularMembrane membrane;
-    int simRunning = 0;
-	float dB = 0.0f;
-}SimState;
+// typedef struct {
+//     std::vector<float> vertexData;
+//     std::atomic<int> simRunning = 0;
+// 	std::atomic<float> dB = 0.0f;
+// }SimState;
 
 typedef struct{
     /*
