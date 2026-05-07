@@ -18,7 +18,7 @@
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
 bool simRunning = false; //sim doesnt run on startup, waits for user to click membrane to strike and start simulating
-bool runAudio = true;
+std::atomic<bool> runAudio = true;
 // Variables that help the rotation of the grid
 float rotation = -30.0f;
 float tilt = 15.0f;
@@ -31,6 +31,9 @@ std::condition_variable cv;
 
 std::vector<float> latestGrid;
 std::mutex gridMtx;
+
+std::vector<float> audioBuf;
+std::mutex audioBufMtx;
 
 //openGl functions for handling user input
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -119,6 +122,7 @@ void physicsEngine(Params params){
 	CircularMembrane membrane;
 	membrane.init(params.timbre.radius, params.timbre.damping, params.timbre.tension, params.timbre.material_density, params.grid.grid_r, params.grid.grid_th);
 	int physSteps = (int)(params.audio.sampleRate * params.audio.bufferSize / membrane.getSimRate()) + 1; //number of physics steps to run for each audio buffer's worth of time
+	AudioDSP_Toolbox dsp;
 	while(true){
 		std::unique_lock<std::mutex> lock(mtx);
 		cv.wait(lock, []{ return !strikeQueue.empty(); });
@@ -133,6 +137,12 @@ void physicsEngine(Params params){
 			std::lock_guard<std::mutex> gridLock(gridMtx);
 			latestGrid = membrane.getCurrentGrid();
 		}
+
+		if (runAudio) {
+			std::lock_guard<std::mutex> audioLock(audioBufMtx);
+			audioBuf = dsp.sampleInterp(physBuf.data(), physBuf.size(), membrane.getSimRate(), params.audio.sampleRate);
+		}
+
 	}
 
 }
