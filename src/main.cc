@@ -35,6 +35,8 @@ std::mutex gridMtx;
 std::vector<float> audioBuf;
 std::mutex audioBufMtx;
 
+std::atomic<bool> running{true};
+
 //openGl functions for handling user input
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -99,6 +101,7 @@ void mouseCB(GLFWwindow* window, int button, int action, int mods)
 		//mutex 
 		std::lock_guard<std::mutex> lock(mtx);
 		strikeQueue.push(currStrike);
+		std::cout << "new event" << std::endl;
 		cv.notify_one();
 
     }
@@ -123,25 +126,16 @@ void physicsEngine(Params params){
 	membrane.init(params.timbre.radius, params.timbre.damping, params.timbre.tension, params.timbre.material_density, params.grid.grid_r, params.grid.grid_th);
 	int physSteps = (int)(params.audio.sampleRate * params.audio.bufferSize / membrane.getSimRate()) + 1; //number of physics steps to run for each audio buffer's worth of time
 	AudioDSP_Toolbox dsp;
-	while(true){
+	while(running){
 		std::unique_lock<std::mutex> lock(mtx);
-		cv.wait(lock, []{ return !strikeQueue.empty(); });
+		cv.wait(lock, []{ return !strikeQueue.empty() || !running; });
+		if (!running) break;
 		StrikeDefs strike = strikeQueue.front();
 		strikeQueue.pop();
 		//Process data
 		std::cout << "There is data to process! Strike at r = " << strike.rPos << ", theta = " << strike.thetaPos << std::endl;
 		membrane.setInitialCondition(&strike);
 		std::vector<float> physBuf(physSteps, 0.0f);
-		membrane.Simulate(physSteps, physBuf);
-		{
-			std::lock_guard<std::mutex> gridLock(gridMtx);
-			latestGrid = membrane.getCurrentGrid();
-		}
-
-		if (runAudio) {
-			std::lock_guard<std::mutex> audioLock(audioBufMtx);
-			audioBuf = dsp.sampleInterp(physBuf.data(), physBuf.size(), membrane.getSimRate(), params.audio.sampleRate);
-		}
 
 	}
 
@@ -227,6 +221,10 @@ int main(int argc, char** argv) {
 		if (elapsed < frameBudget) std::this_thread::sleep_for(frameBudget - elapsed);
 	}
 
+	running.store(false);
+	cv.notify_all();
 	physics_thread.join();
+	//audio deconstructor destroys PA thread
+
     return 0;
 }
