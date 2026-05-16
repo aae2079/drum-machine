@@ -202,7 +202,6 @@ The Gaussian width is controlled inside `CircularMembrane::setInitialCondition()
 | `timbre.tension` | Pitch / decay | Low (80) | Medium (150) | High (250) |
 | `timbre.radius` | Pitch | Large (0.4) | Medium (0.3) | Small (0.18) |
 | `timbre.damping` | Sustain | Low (0.5) | Medium (1.0) | High (3.0) |
-| Strike `amplitude` | Strike strength | High (0.8) | Medium (0.5) | Low (0.2) |
 
 ## Architecture
 
