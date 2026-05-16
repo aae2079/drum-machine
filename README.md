@@ -206,7 +206,7 @@ The Gaussian width is controlled inside `CircularMembrane::setInitialCondition()
 ## Architecture
 
 <p align="center">
-   <img src="https://github.com/user-attachments/assets/5b312b35-5778-4805-91d1-baece7332942" />
+   <img src="https://github.com/user-attachments/assets/afbf98eb-df8f-4d23-b522-2f74a68018af"/>
 </p>
 *Architecture Designed by Aaron Escobar. Diagram generated using Claude
 
