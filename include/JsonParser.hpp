@@ -46,6 +46,10 @@ static bool parseJsonSettings(const std::string& filename, Params& params) {
             params.grid.grid_r = dimensions["grid_r"].GetUint();
             params.grid.grid_th = dimensions["grid_th"].GetUint();
         }
+        if (doc.HasMember("zoom") && doc["zoom"].IsObject()) {
+            const auto& zoom = doc["zoom"];
+            params.zoom_sensitivity = zoom["sensitivity_constant"].GetFloat();
+        }
         return true;
     } else {
         std::cerr << "Error parsing JSON: " << rapidjson::GetParseError_En(doc.GetParseError()) << std::endl;

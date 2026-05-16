@@ -23,7 +23,8 @@ public:
 
     std::vector<float>& getCurrentGrid() { return u_curr_; }
     float& getSimRate() { return simRate_; }
-        
+
+    bool isActive();
     
     void setInitialCondition(const StrikeDefs* strike);
     void Simulate(int physSteps, std::vector<float>& physBuf);
@@ -39,6 +40,8 @@ private:
     float dr_;      // radial step size m
     float dtheta_;  // angular step size radians
     float simRate_; // simulation sample rate (Hz)
+
+    float maxAmplitude_=100.0f; // track max amplitude for normalization or other purposes
 
 
     // Discretization / storage placeholders

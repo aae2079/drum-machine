@@ -1,10 +1,12 @@
 #include "audioEngine.hpp"
-AudioEngine::AudioEngine(int sampleRate, int bufferSize): _sampleRate(sampleRate), _bufferSize(bufferSize) {
-    // Initialize PortAudio or other audio resources
+
+AudioEngine::AudioEngine(int sampleRate, int bufferSize)
+    : _sampleRate(sampleRate), _bufferSize(bufferSize)
+{
     err = Pa_Initialize();
     if (err != paNoError) {
         std::cerr << "PortAudio initialization failed: " << Pa_GetErrorText(err)
-                    << " (" << err << ")" << std::endl;
+                  << " (" << err << ")" << std::endl;
         Pa_Terminate();
         return;
     }
@@ -15,28 +17,31 @@ AudioEngine::AudioEngine(int sampleRate, int bufferSize): _sampleRate(sampleRate
         Pa_Terminate();
         return;
     }
-    outputParameters.channelCount = 1; // Mono output
-    outputParameters.sampleFormat = paFloat32; // 32-bit float output
+    outputParameters.channelCount = 1;
+    outputParameters.sampleFormat = paFloat32;
     outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
     outputParameters.hostApiSpecificStreamInfo = nullptr;
 }
+
 AudioEngine::~AudioEngine() {
     stop();
     Pa_Terminate();
 }
 
 void AudioEngine::start() {
-    // Start the audio stream
-    err = Pa_OpenStream(&mainStream, nullptr, &outputParameters, _sampleRate, _bufferSize, paClipOff, paStreamCB, this);
+    err = Pa_OpenStream(&mainStream, nullptr, &outputParameters, _sampleRate, _bufferSize,
+                        paClipOff, paStreamCB, this);
     if (err != paNoError) {
-        std::cerr << "PortAudio open stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
+        std::cerr << "PortAudio open stream failed: " << Pa_GetErrorText(err)
+                  << " (" << err << ")" << std::endl;
         Pa_Terminate();
         return;
     }
 
     err = Pa_SetStreamFinishedCallback(mainStream, paStreamFinished);
     if (err != paNoError) {
-        std::cerr << "PortAudio set stream finished callback failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
+        std::cerr << "PortAudio set stream finished callback failed: " << Pa_GetErrorText(err)
+                  << " (" << err << ")" << std::endl;
         Pa_CloseStream(mainStream);
         Pa_Terminate();
         return;
@@ -44,7 +49,8 @@ void AudioEngine::start() {
 
     err = Pa_StartStream(mainStream);
     if (err != paNoError) {
-        std::cerr << "PortAudio start stream failed: " << Pa_GetErrorText(err) << " (" << err << ")" << std::endl;
+        std::cerr << "PortAudio start stream failed: " << Pa_GetErrorText(err)
+                  << " (" << err << ")" << std::endl;
         Pa_CloseStream(mainStream);
         Pa_Terminate();
         return;
@@ -52,54 +58,57 @@ void AudioEngine::start() {
 }
 
 void AudioEngine::stop() {
-    // Stop and close stream
     if (mainStream != nullptr) {
         err = Pa_StopStream(mainStream);
-        if (err != paNoError) {
+        if (err != paNoError)
             std::cerr << "PortAudio stop stream failed: " << Pa_GetErrorText(err) << std::endl;
-        }
         err = Pa_CloseStream(mainStream);
-        if (err != paNoError) {
+        if (err != paNoError)
             std::cerr << "PortAudio close stream failed: " << Pa_GetErrorText(err) << std::endl;
-        }
     }
-    std::cout << "Simulation complete. Waiting for audio playback to finish..." << std::endl;
-    Pa_Sleep(2000); // Wait 2 seconds for audio to finish playing
+    // Wake any blocked pushChunk so the physics thread can exit cleanly.
+    slotCV_.notify_all();
 }
 
 void AudioEngine::pushChunk(const float* buffer, size_t numSamples) {
-   //push audio data into the ring buffer for playbac
-    Data cur;
-    cur.audio_buffer.assign(buffer, buffer + numSamples);
-    cur.full = 1;
-    while (ringBuf[fill_ix].full != 0) {
-        Pa_Sleep(_bufferSize * 1000 / _sampleRate); // sleep one callback period
-    }
-    ringBuf[fill_ix] = cur; // Copy current buffer to ring buffer
-    fill_ix = (fill_ix + 1) % NUM_FRAMES;
+
+    // Block until the target slot is free (audio callback consumed it).
+    std::unique_lock<std::mutex> lock(slotMtx_);
+    slotCV_.wait(lock, [this] {
+        return ringBuf[fill_ix.load(std::memory_order_relaxed)].full.load(std::memory_order_acquire) == 0;
+    });
+
+    int ix = fill_ix.load(std::memory_order_relaxed);
+    ringBuf[ix].audio_buffer.assign(buffer, buffer + numSamples);
+    ringBuf[ix].full.store(1, std::memory_order_release);
+    fill_ix.store((ix + 1) % NUM_FRAMES, std::memory_order_relaxed);
 }
 
-void AudioEngine::delay(){
-    Pa_Sleep(_bufferSize / _sampleRate * 1000); //Sleep for duration of one buffer
+void AudioEngine::delay() {
+    Pa_Sleep(_bufferSize / _sampleRate * 1000);
 }
 
-int AudioEngine::paStreamCB(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
-                    const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
-    return static_cast<AudioEngine*>(userData)->internalAudioCB(static_cast<float*>(outputBuffer),framesPerBuffer);
+int AudioEngine::paStreamCB(const void* /*inputBuffer*/, void* outputBuffer,
+                             unsigned long framesPerBuffer,
+                             const PaStreamCallbackTimeInfo* /*timeInfo*/,
+                             PaStreamCallbackFlags /*statusFlags*/, void* userData)
+{
+    return static_cast<AudioEngine*>(userData)->internalAudioCB(
+        static_cast<float*>(outputBuffer), framesPerBuffer);
 }
 
 void AudioEngine::paStreamFinished(void*) {
     std::cout << "PortAudio stream finished.\n";
 }
 
-int AudioEngine::internalAudioCB(float *out, unsigned long frames){
-    // Implement the audio callback function
+int AudioEngine::internalAudioCB(float* out, unsigned long frames) {
     unsigned long filled = 0;
-    
-    while(filled < frames){
-        Data &cur = ringBuf[read_ix];
-        if (cur.audio_buffer.empty() || cur.full == 0){
-            // If no data, output silence
+    while (filled < frames) {
+        int ix = read_ix.load(std::memory_order_relaxed);
+        Data& cur = ringBuf[ix];
+
+        if (cur.full.load(std::memory_order_acquire) == 0) {
+            // Ring buffer empty — output silence for remaining frames.
             std::fill(out + filled, out + frames, 0.0f);
             break;
         }
@@ -108,17 +117,21 @@ int AudioEngine::internalAudioCB(float *out, unsigned long frames){
         int needed    = (int)(frames - filled);
         int to_copy   = std::min(available, needed);
 
-        std::memcpy(out + filled, cur.audio_buffer.data() + buf_pos, to_copy * sizeof(float));
+        if (muted_){
+            std::fill(out + filled, out + filled + to_copy, 0.0f);
+        } else {
+            std::memcpy(out + filled, cur.audio_buffer.data() + buf_pos, to_copy * sizeof(float));
+        }
 
         filled  += to_copy;
         buf_pos += to_copy;
 
-        // Current Data chunk exhausted — advance ring buffer
         if (buf_pos >= (int)cur.audio_buffer.size()) {
-            cur.full = 0;           // Mark slot as consumed so main thread can reuse
-            cur.audio_buffer.clear();
-            read_ix = (read_ix + 1) % NUM_FRAMES;
+            // Slot fully consumed — release it and notify the producer.
+            cur.full.store(0, std::memory_order_release);
+            read_ix.store((ix + 1) % NUM_FRAMES, std::memory_order_relaxed);
             buf_pos = 0;
+            slotCV_.notify_one();
         }
     }
 

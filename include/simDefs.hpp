@@ -38,6 +38,7 @@ typedef struct {
     AudioDefinitions audio;
     TimbreParams timbre;
     RadialDimensions grid;
+    float zoom_sensitivity;
 }Params;
 
 #endif // DRUM_MACHINE_SIM_DEFS_H
