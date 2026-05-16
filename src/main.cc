@@ -2,7 +2,6 @@
 #include <vector>
 #include <cstdlib>
 #include "simDefs.hpp"
-#include "CircularMembrane.hpp"
 #include "drumRenderer.hpp"
 #include "audioEngine.hpp"
 #include "strikeDefs.hpp"

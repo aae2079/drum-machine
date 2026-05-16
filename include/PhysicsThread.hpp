@@ -9,6 +9,7 @@
 #include "strikeDefs.hpp"
 #include "audioEngine.hpp"
 #include "audioDSP.hpp"
+#include "CircularMembrane.hpp"
 
 class PhysicsThread {
 public:
