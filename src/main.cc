@@ -102,11 +102,11 @@ void appSettings(){
 }
 
 int main(int argc, char** argv) {
-	#if defined(_WIN32) || defined(_WIN64)
-	    _putenv("OMP_WAIT_POLICY=passive");
-	#else
-	setenv("OMP_WAIT_POLICY", "passive", 1);
-	#endif
+	// #if defined(_WIN32) || defined(_WIN64)
+	//     _putenv("OMP_WAIT_POLICY=passive");
+	// #else
+	// setenv("OMP_WAIT_POLICY", "passive", 1);
+	// #endif
 
 	if (argc < 2){
 		std::cerr << "Usage: " << argv[0] << " drum_config.json" << std::endl;

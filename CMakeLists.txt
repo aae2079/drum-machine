@@ -12,7 +12,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Set optimization levels for each build type
-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 
 # Set output directories

@@ -11,7 +11,7 @@
 #include "portaudio.h"
 #include "simDefs.hpp"
 
-#define NUM_FRAMES 15
+#define NUM_FRAMES 10
 
 struct Data {
     std::vector<float> audio_buffer;

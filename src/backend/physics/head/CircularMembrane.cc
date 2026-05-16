@@ -66,7 +66,7 @@ void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
     float xs  = r_s * std::cos(strike->thetaPos);
     float zs  = r_s * std::sin(strike->thetaPos);
 
-    #pragma omp parallel for schedule(static) collapse(2)
+    //#pragma omp parallel for schedule(static) collapse(2)
     for (int ir = 1; ir < Nr_ - 1; ir++) {
         for (int itheta = 0; itheta < Ntheta_; itheta++) {
             float xi    = ir * std::cos(itheta * dtheta_);
@@ -86,7 +86,7 @@ void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
     // sampleInterp() on simBuf_ will then produce exactly BUFFER_SIZE audio sample
     for(int tt = 0; tt < physSteps; tt++){
         // --- spatial update ----
-        #pragma omp parallel for schedule(static)
+        //#pragma omp parallel for schedule(static)
         for (int ii = 1; ii < Nr_ - 1; ii++){
             float r = ii * dr_;
             for (int jj = 0; jj < Ntheta_; jj++){
