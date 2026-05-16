@@ -11,7 +11,6 @@
 
 const unsigned int WIDTH  = 640;
 const unsigned int HEIGHT = 480;
-bool simRunning = false;
 bool muted = false;
 float rotation = -30.0f;
 float tilt = 15.0f;
@@ -90,7 +89,6 @@ void strikeCB(GLFWwindow* window, int button, int action, int mods)
 		std::cout << "New Event: r=" << currStrike.rPos << " theta=" << currStrike.thetaPos << std::endl;
     }
 }
-
 
 void appSettings(){
 	std::cout << std::endl;
