@@ -8,7 +8,15 @@ class AudioDSP_Toolbox {
     public:
     AudioDSP_Toolbox();
     ~AudioDSP_Toolbox();
-    std::vector<float> sampleInterp(float *in, int inLen, float inFs, float outFs);
+    std::vector<float> applyGain(const std::vector<float>& buffer, float gain = 0.5f) {
+        std::vector<float> output(buffer.size());
+        for (size_t i = 0; i < buffer.size(); i++) {
+            output[i] = buffer[i] * gain;
+        }
+        return output;
+    }
+    std::vector<float> normalizeAudio(const std::vector<float>& buffer);
+    std::vector<float> sampleInterp(float *in, int inLen, int outLen, float inFs, float outFs);
     float calculateDecibleLevel(const std::vector<float>& buffer) {
         float sumSquares = 0.0f;
         for (float sample : buffer) {

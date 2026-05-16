@@ -11,6 +11,7 @@
 #define BUFFER_SIZE 512
 #define GRID_X 50
 #define GRID_Y 50
+#define CFL 0.5f // Courant–Friedrichs–Lewy condition constant for stability
 
 /*
 Class that generates grid and simulates 2d rectangular membrane vibrations

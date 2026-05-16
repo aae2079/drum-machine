@@ -4,7 +4,7 @@ A real-time 2D membrane drum synthesizer using finite difference method (FDM) to
 
 ## Overview
 
-This drum machine simulates the vibration of a 2D circular membrane (like a drum head) using numerical solutions to the 2D wave equation in polar coordinates with damping. The displacement of the membrane is converted into audio in real-time at 24 kHz, while an interactive 3D visualization shows the membrane's motion. Users can click anywhere on the rendered membrane to strike it at that exact position.
+This drum machine simulates the vibration of a 2D circular membrane (like a drum head) using numerical solutions to the 2D wave equation in polar coordinates with damping. The displacement of the membrane is converted into audio in real-time at 96 kHz, while an interactive 3D visualization shows the membrane's motion. Users can click anywhere on the rendered membrane to strike it at that exact position.
 
 <p align="center">
    <img src="https://github.com/user-attachments/assets/50881e13-a1ef-493e-a4f9-566fb767dfe8" />
@@ -14,10 +14,12 @@ This drum machine simulates the vibration of a 2D circular membrane (like a drum
 ### Key Features
 
 - **Physics-Based Synthesis**: Solves the 2D wave equation in polar coordinates using finite difference method
-- **Real-Time Audio**: 24 kHz audio output via PortAudio with ring-buffer producer-consumer decoupling
-- **Audio DSP Toolbox**: Dedicated dsp module (`AudioDSP_Toolbox`)
+- **Threaded Physics Engine**: Physics runs in a dedicated background thread (`PhysicsThread`), decoupled from the render loop via mutex/condition-variable queues
+- **Real-Time Audio**: 96 kHz audio output via PortAudio with ring-buffer producer-consumer decoupling
+- **Audio DSP Toolbox**: Dedicated dsp module (`AudioDSP_Toolbox`) for resampling and gain
+- **JSON Configuration**: All simulation and audio parameters loaded at runtime from `drum_config.json` — no recompilation required
 - **Strike Placement**: Ray-cast mouse interaction lets you strike any point on the membrane; strike position (r, θ) is passed to the physics solver
-- **3D Visualization**: Interactive OpenGL rendering with rotation, tilt, and audio toggle controls
+- **3D Visualization**: Interactive OpenGL rendering with rotation, tilt, scroll zoom, and audio toggle controls
 - **Damping Simulation**: Energy loss modeling for realistic drum decay
 - **Modular Architecture**: Physics, audio engine, DSP, and rendering are fully decoupled components
 
@@ -29,6 +31,7 @@ drum-machine/
 │   ├── main.cc                              # Main application loop
 │   ├── backend/
 │   │   ├── physics/
+│   │   │   ├── PhysicsThread.cc             # Dedicated physics thread (run loop, strike queue)
 │   │   │   └── head/
 │   │   │       ├── CircularMembrane.cc      # Polar FDM physics solver
 │   │   │       └── RectangularMembrane.cc   # Cartesian FDM solver (legacy/tests)
@@ -44,16 +47,20 @@ drum-machine/
 │   └── 3rdparty/
 │       └── glad.c                          # GLAD OpenGL loader
 ├── include/
+│   ├── PhysicsThread.hpp                    # Physics thread interface
 │   ├── CircularMembrane.hpp
 │   ├── RectangularMembrane.hpp
 │   ├── audioEngine.hpp
 │   ├── audioDSP.hpp                         # AudioDSP_Toolbox interface
 │   ├── drumRenderer.hpp
+│   ├── JsonParser.hpp                       # JSON config loader (rapidjson)
 │   ├── Surface.hpp                          # Abstract membrane base (placeholder)
-│   ├── audioDefs.hpp                        # Audio configuration
-│   ├── simDefs.hpp                          # Simulation parameters
+│   ├── audioDefs.hpp                        # AudioDefinitions struct
+│   ├── simDefs.hpp                          # Params, TimbreParams, RadialDimensions structs
 │   ├── strikeDefs.hpp                       # Strike parameters (amplitude, rPos, thetaPos)
 │   └── wav.hpp                              # WAV file format
+├── config/
+│   └── drum_config.json                     # Runtime configuration (audio, timbre, grid, zoom)
 ├── dependencies/                            # Third-party headers (GLAD, KHR)
 ├── test/
 │   └── rectangularMembraneUnitTest.cc
@@ -124,39 +131,56 @@ ln -sf ../../config/* config/
 ### Visualization
 - **Arrow Keys (↑↓)** — Tilt membrane up/down
 - **Arrow Keys (←→)** — Rotate membrane left/right
+- **Scroll Wheel** — Zoom in/out (field of view, 10°–90°)
 - **M** — Toggle audio output on/off
 
 ## Configuration
 
-Edit `include/simDefs.hpp` to customize:
+All runtime parameters are loaded from `config/drum_config.json` at startup — no recompilation needed. Pass it as the first argument to the binary:
 
-```cpp
-#define CFL 0.25              // Courant stability parameter (< 0.5)
-#define BUFFER_SIZE 2048      // Audio buffer chunk size
-#define GRID_R 70            // Membrane grid width (affects tone)
-#define GRID_TH 100            // Membrane grid height (affects tone)
+```bash
+./drum-machine config/drum_config.json
 ```
 
-Edit `include/audioDefs.hpp` for audio settings:
-
-```cpp
-#define SAMPLE_RATE 24000     // Audio sample rate (Hz)
-#define NUM_CHANNELS 1        // Mono output
-#define BIT_DEPTH 16          // 16-bit audio
+```json
+{
+    "audio": {
+        "sample_rate": 96000.0,
+        "buffer_size": 512,
+        "bit_depth": 16,
+        "num_channels": 1,
+        "audio_format_pcm": 1
+    },
+    "timbre": {
+        "membrane_thickness": 0.0001,
+        "material_density": 1400.0,
+        "tension": 100.0,
+        "radius": 0.5,
+        "damping": 1.0
+    },
+    "dimensions": {
+        "grid_r": 50,
+        "grid_th": 75
+    },
+    "zoom": {
+        "sensitivity_constant": 0.5
+    }
+}
 ```
+
+| Field | Description |
+|-------|-------------|
+| `audio.sample_rate` | Output sample rate in Hz (default 96000) |
+| `audio.buffer_size` | Samples per audio buffer — affects latency |
+| `timbre.tension` | N/m — tighter = higher pitch, faster decay |
+| `timbre.material_density` | kg/m³ — multiplied by thickness to get surface density |
+| `timbre.radius` | Physical drum head radius in meters |
+| `timbre.damping` | Energy loss rate (s⁻¹) — higher = shorter sustain |
+| `dimensions.grid_r` | Radial rings — larger = lower pitch, more CPU |
+| `dimensions.grid_th` | Angular samples per ring |
+| `zoom.sensitivity_constant` | Scroll wheel zoom speed |
 
 ## Physics Parameters
-
-Tune the drum sound by editing `include/simDefs.hpp`:
-
-```cpp
-#define CFL 0.2          // Courant stability parameter — controls timestep (must satisfy CFL² < 0.5)
-#define GRID_R 50        // Radial rings — larger = lower pitch
-#define GRID_TH 75       // Angular samples per ring
-#define TENSION 150.0f   // N/m — tighter = higher pitch, faster decay
-#define MATERIAL_DENSITY (1400.0f * MEMBRANE_THICKNESS)  // kg/m², derived from Mylar properties
-#define RADIUS 0.3f      // meters — physical drum head size
-```
 
 Strike parameters are passed via the `StrikeDefs` struct (defined in `include/strikeDefs.hpp`):
 
@@ -172,47 +196,47 @@ The Gaussian width is controlled inside `CircularMembrane::setInitialCondition()
 
 ### How to Tune for Different Drum Sounds
 
-| Parameter | Effect | For Kick | For Tom | For Snare |
-|-----------|--------|----------|---------|-----------|
-| `GRID_R`, `GRID_TH` | Pitch | Large (100+) | Medium (50) | Small (30) |
-| `TENSION` | Pitch / decay | Low (80) | Medium (150) | High (250) |
-| `RADIUS` | Pitch | Large (0.4) | Medium (0.3) | Small (0.18) |
-| `amp` | Strike strength | High (0.2) | Medium (0.1) | Low (0.05) |
+| JSON field | Effect | For Kick | For Tom | For Snare |
+|------------|--------|----------|---------|-----------|
+| `dimensions.grid_r` / `grid_th` | Pitch | Large (100+) | Medium (50) | Small (30) |
+| `timbre.tension` | Pitch / decay | Low (80) | Medium (150) | High (250) |
+| `timbre.radius` | Pitch | Large (0.4) | Medium (0.3) | Small (0.18) |
+| `timbre.damping` | Sustain | Low (0.5) | Medium (1.0) | High (3.0) |
 
 ## Architecture
 
+<p align="center">
+   <img src="https://github.com/user-attachments/assets/5b312b35-5778-4805-91d1-baece7332942" />
+</p>
+*Architecture Designed by Aaron Escobar. Diagram generated using Claude
+
+### PhysicsThread (Threading)
+- Runs `CircularMembrane` on a dedicated background thread, decoupled from the render loop
+- Strike events are enqueued via `pushStrike()`; grid snapshots are shared with the renderer via `tryGetGrid()`
+
 ### CircularMembrane (Physics)
-- Solves the 2D wave equation in polar coordinates (radial + angular)
-- Stores 3 flat grids (`u_prev_`, `u_curr_`, `u_next_`) indexed as `[ir * Ntheta_ + itheta]`
-- `init()`: Derives wave speed `c = sqrt(T/ρ)` and timestep `dt = CFL * dr / c`; allocates grids
-- `setInitialCondition(StrikeDefs*)`: Applies a Gaussian strike at the specified (r, θ) position; r=0 and θ are both user-controllable via mouse click
-- `Simulate()`: Runs `physSteps_` FDM timesteps (enough to cover one audio buffer); handles origin singularity by averaging angular neighbours; enforces Dirichlet boundary at outer edge
-- Audio extracted from centre point (r=0) with 15× gain
+- Solves the 2D wave equation in polar coordinates using explicit finite differences
+- Three time-step grids (`u_prev_`, `u_curr_`, `u_next_`) advanced via pointer swap
+- Handles origin singularity by averaging angular neighbours; Dirichlet boundary at outer edge
 
 ### AudioDSP_Toolbox (DSP)
-- Standalone DSP utility class (`src/backend/audio/dsp/audioDSP.cc`)
-- `sampleInterp()`: Linear resampling from physics simulation rate → 24 kHz, decoupling the physics timestep from the audio output rate
+- `sampleInterp()`: Linear resampling from the physics simulation rate → 96 kHz output rate
+- `applyGain()`: Scales the audio buffer before pushing to the ring buffer
 
 ### AudioEngine (Audio I/O)
-- Uses **PortAudio** for cross-platform audio
-- Ring buffer with `NUM_FRAMES` slots for producer-consumer pattern
-- Callback-based playback (real-time safe)
-- `pushChunk()`: Main thread → ring buffer
-- `internalAudioCB()`: Audio callback → playback
+- PortAudio wrapper with a 15-slot ring buffer for producer-consumer audio streaming
+- `pushChunk()` is called from the physics thread; the real-time callback drains it
 
 ### DrumRenderer (Visualization)
 - **OpenGL 3.3 Core** with GLFW window management
-- `updateCircularVertexData()`: Maps polar grid to Cartesian mesh vertices each frame
-- Wireframe mode (GL_LINE) shows membrane displacement clearly
-- GLM matrices for rotation and tilt transformations
+- Renders the polar grid as a wireframe mesh; GLM matrices handle rotation, tilt, and FOV zoom
 
 ## Technical Highlights
 
 ### Real-Time Audio Streaming
-- Physics timestep derived from membrane parameters (not fixed); `physSteps_` computed so one `Simulate()` call covers exactly one audio buffer's worth of time
-- `sampleInterp()` resamples physics output to 24 kHz before pushing to ring buffer
+- Physics runs in its own thread; `sampleInterp()` resamples output to 96 kHz before pushing to the ring buffer
 - Ring buffer prevents audio glitches under CPU load
-- ~85 ms latency (BUFFER_SIZE / SAMPLE_RATE)
+- ~5 ms latency (512 samples / 96 kHz)
 
 ### Numerical Stability
 - **CFL Condition**: `(c·dt/dr)² ≤ CFL²` enforced at init
@@ -222,12 +246,12 @@ The Gaussian width is controlled inside `CircularMembrane::setInitialCondition()
 
 ### Performance
 - OpenMP parallelization of the spatial grid loop in `Simulate()`
-- 50×75 polar grid runs at 60 FPS with vsync on modern hardware
-- Reduce `GRID_R`/`GRID_TH` in `simDefs.hpp` if performance is insufficient
+- 50×75 polar grid runs smoothly on modern hardware
+- Reduce `grid_r`/`grid_th` in `drum_config.json` if performance is insufficient
 
 ## Audio Output Quality
 
-- **Sample Rate**: 24 kHz
+- **Sample Rate**: 96 kHz (configurable in `drum_config.json`)
 - **Bit Depth**: 16-bit signed PCM
 - **Channels**: Mono
 - **Dynamic Range**: ±1.0 (clamped to prevent clipping)
@@ -236,6 +260,9 @@ The Gaussian width is controlled inside `CircularMembrane::setInitialCondition()
 
 ### Phase 2: Advanced Features
 - [x] Multiple strike locations (mouse interaction — ray-cast to (r, θ))
+- [x] Threaded physics engine (decoupled from render loop)
+- [x] JSON-based runtime configuration
+- [x] Scroll-to-zoom camera control
 - [ ] Parameter GUI
 - [ ] Simulate Drum Shell
 
@@ -292,16 +319,15 @@ sudo apt-get install --reinstall libglfw3-dev
 **No audio output**:
 - Check system volume and audio device
 - Verify PortAudio initialization in console output
-- Confirm audio parameters in `audioDefs.hpp`
+- Confirm `audio.sample_rate` and `audio.buffer_size` in `drum_config.json`
 
 **Simulation too fast/slow**:
-- Adjust `BUFFER_SIZE` in `simDefs.hpp`
-- Increase/decrease `damp_` parameter for faster/slower decay
+- Adjust `audio.buffer_size` in `drum_config.json`
+- Increase `timbre.damping` for faster decay; decrease for longer sustain
 - Check CPU usage with `top` or Activity Monitor
 
 **Visualization lag**:
-- Reduce grid size: `GRID_R`, `GRID_TH` → 64 (faster)
-- Lower frame rate cap (not currently implemented)
+- Reduce grid size: lower `dimensions.grid_r` / `grid_th` in `drum_config.json`
 - Enable release build: `-DCMAKE_BUILD_TYPE=Release`
 
 ## References
@@ -338,5 +364,5 @@ Developed as an exploration of physical modeling synthesis and real-time audio p
 
 ---
 
-**Latest Update**: April 2026  
-**Current Status**: MVP with circular membrane (polar FDM), strike position via ray-cast, AudioDSP toolbox, real-time audio, and 3D visualization
+**Latest Update**: May 2026  
+**Current Status**: Threaded architecture with dedicated physics thread, JSON runtime config, 96 kHz audio, scroll zoom, and ray-cast strike placement

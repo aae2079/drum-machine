@@ -51,6 +51,13 @@ void CircularMembrane::cleanup() {
     simBuf_.clear();
 }
 
+bool CircularMembrane::isActive(){
+    //find max in physics buffer
+    if (maxAmplitude_ < 0.000001f) { // threshold for "active" state, can be tuned
+        return false; // membrane is effectively at rest
+    }
+    return true; // membrane is still vibrating
+}
 
 void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
     // Convert strike position to index-space Cartesian coords so r and theta
@@ -72,6 +79,7 @@ void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
         }
     }
 }
+
 
 void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
     // Run exactly enough physics steps to cover one audio buffer's worth of time.
@@ -125,18 +133,24 @@ void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
             u_next_[0 * Ntheta_ + jj] = avg;
         }
         //sample audio at center of membrane
-        physBuf[tt] = 15.0f * u_curr_[0]; // center point r=0, all theta the same
+        physBuf[tt] = 1.0f * u_curr_[0]; // center point r=0, all theta the same
+
         //advance  simulation
         std::swap(u_prev_, u_curr_);
         std::swap(u_curr_, u_next_);
-   
 
         if (std::isnan(u_next_[Nr_/2 * Ntheta_]) || std::isinf(u_next_[Nr_/2 * Ntheta_])) {
             std::cerr << "BLOW UP at t=" << tt << std::endl;
             break;
         }
-
     }
+
+    // Track peak amplitude so isActive() can detect when the membrane is at rest.
+    // Must scan the full grid — center-point samples won't reflect a wave that hasn't
+    // propagated inward yet (e.g. a strike near the boundary).
+    maxAmplitude_ = 0.0f;
+    for (float v : u_curr_) maxAmplitude_ = std::max(maxAmplitude_, std::abs(v));
 }
+
 
 

@@ -9,12 +9,6 @@
     #define M_PI 3.14159265358979323846
 #endif
 
-typedef struct {
-    CircularMembrane membrane;
-    int simRunning = 0;
-	float dB = 0.0f;
-}SimState;
-
 typedef struct{
     /*
     Surface density for Mylar drum head (kg/m^2).
@@ -38,6 +32,7 @@ typedef struct {
     AudioDefinitions audio;
     TimbreParams timbre;
     RadialDimensions grid;
+    float zoom_sensitivity;
 }Params;
 
 #endif // DRUM_MACHINE_SIM_DEFS_H
