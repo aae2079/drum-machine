@@ -16,7 +16,7 @@
 
 class DrumRenderer{
     public:
-        DrumRenderer(uint32_t wWidth, uint32_t wHeight, const char* windowTitle = "Drum Machine");
+        DrumRenderer(uint32_t wWidth, uint32_t wHeight, int gridR, int gridTH, const char* windowTitle = "Drum Machine");
         ~DrumRenderer();
 
         //Window Managagment
@@ -80,6 +80,9 @@ class DrumRenderer{
         //meshData
         std::vector<GLfloat> vertices_;
         std::vector<GLuint> indices_;
+        int gridR_;
+        int gridTH_;
+
         int gridX;
         int gridY;
         

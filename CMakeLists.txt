@@ -12,7 +12,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Set optimization levels for each build type
-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 
 # Set output directories
@@ -32,9 +32,10 @@ pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 set(SOURCES
     src/main.cc
     src/frontend/drumRenderer.cc
-    src/backend/CircularMembrane.cc
-    src/backend/RectangularMembrane.cc
-    src/backend/audioEngine.cc
+    src/backend/physics/head/CircularMembrane.cc
+    src/backend/physics/PhysicsThread.cc
+    src/backend/audio/engine/audioEngine.cc
+    src/backend/audio/dsp/audioDSP.cc
     src/3rdparty/glad.c
 )
 
@@ -43,11 +44,11 @@ set(HEADERS
     include/RectangularMembrane.hpp
     include/Surface.hpp
     include/audioDefs.hpp
+    include/audioDSP.hpp
     include/strikeDefs.hpp
     include/drumRenderer.hpp
     dependencies/glad/glad.h
     dependencies/KHR/khrplatform.h
-    #/usr/include/portaudio.h
 )
 
 # Create executable
@@ -94,13 +95,13 @@ else()
     target_compile_options(drum-machine PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-# Testing
+#Testing
 enable_testing()
 
 set(TEST_SOURCES
     test/rectangularMembraneUnitTest.cc
-    src/backend/RectangularMembrane.cc
-    src/backend/audioEngine.cc
+    src/backend/physics/head/RectangularMembrane.cc
+    src/backend/audio/engine/audioEngine.cc
 )
 
 add_executable(test_rectangular_membrane ${TEST_SOURCES})
@@ -129,6 +130,6 @@ target_compile_options(test_rectangular_membrane PRIVATE
 
 add_test(
     NAME RectangularMembraneTest
-    COMMAND test_rectangular_membrane 2
+    COMMAND test_rectangular_membrane ${CMAKE_SOURCE_DIR}/config/drum_config.json
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )

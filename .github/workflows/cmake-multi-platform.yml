@@ -50,11 +50,12 @@ jobs:
           libxcursor-dev \
           libxi-dev \
           libomp-dev \
-          pkg-config
+          pkg-config \
+          rapidjson-dev
     - name: Install Windows dependencies
       if: runner.os == 'Windows'
       run: |
-        vcpkg install pkgconf opengl glfw3 portaudio glm --triplet x64-windows
+        vcpkg install pkgconf opengl glfw3 portaudio glm rapidjson --triplet x64-windows
         vcpkg integrate install
     - name: Set reusable strings
       id: strings
@@ -76,4 +77,4 @@ jobs:
 
     - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: ctest --build-config ${{ matrix.build_type }} --verbose -A "2"
+      run: ctest --build-config ${{ matrix.build_type }}

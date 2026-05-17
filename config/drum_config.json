@@ -1,0 +1,26 @@
+{
+    "audio": {
+        "sample_rate": 96000.0,
+        "buffer_size": 512,
+        "bit_depth": 16,
+        "num_channels": 1,
+        "audio_format_pcm": 1
+    },
+
+    "timbre": {
+        "membrane_thickness": 0.0001,
+        "material_density": 1400.0,
+        "tension": 100.0,
+        "radius": 0.5,
+        "damping": 1.0
+    },
+
+    "dimensions":{
+        "grid_r": 50,
+        "grid_th": 75
+    },
+
+    "zoom": {
+        "sensitivity_constant": 0.5
+    }
+}
