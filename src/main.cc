@@ -18,6 +18,7 @@ float fov = 45.0f;
 struct AppContext {
 	Params params;
 	PhysicsThread* physThread;
+	std::queue<StrikeMarker> markerQueue;
 };
 
 void keyCB(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -51,14 +52,16 @@ void strikeCB(GLFWwindow* window, int button, int action, int mods)
         double x_pos, y_pos;
         glfwGetCursorPos(window, &x_pos, &y_pos);
 
-        float ndcX = (float)(2.0 * x_pos / WIDTH  - 1.0);
-        float ndcY = (float)(1.0 - 2.0 * y_pos / HEIGHT);
+        int w, h;
+        glfwGetWindowSize(window, &w, &h);
+        float ndcX = (float)(2.0 * x_pos / w - 1.0);
+        float ndcY = (float)(1.0 - 2.0 * y_pos / h);
 
         glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 view  = glm::rotate(
                               glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.5f)),
                               glm::radians(tilt), glm::vec3(1.0f, 0.0f, 0.0f));
-        glm::mat4 proj  = glm::perspective(glm::radians(fov), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
+        glm::mat4 proj  = glm::perspective(glm::radians(fov), (float)w / h, 2.0f, 100.0f);
 
         glm::vec4 rayView = glm::inverse(proj) * glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
         rayView = glm::vec4(rayView.x, rayView.y, -1.0f, 0.0f);
@@ -85,8 +88,13 @@ void strikeCB(GLFWwindow* window, int button, int action, int mods)
 
 		auto* ctrl = static_cast<AppContext*>(glfwGetWindowUserPointer(window));
 		ctrl->physThread->pushStrike(currStrike);
+		ctrl->markerQueue.push({ndcX, ndcY, glfwGetTime()});
 		std::cout << "New Event: r=" << currStrike.rPos << " theta=" << currStrike.thetaPos << std::endl;
     }
+}
+
+void framebufferSizeCB(GLFWwindow* /*window*/, int width, int height) {
+    glViewport(0, 0, width, height);
 }
 
 void appSettings(){
@@ -134,11 +142,13 @@ int main(int argc, char** argv) {
 	glfwSetKeyCallback(drumGui.getWindow(), keyCB);
 	glfwSetMouseButtonCallback(drumGui.getWindow(), strikeCB);
 	glfwSetScrollCallback(drumGui.getWindow(), zoomCB);
+	glfwSetFramebufferSizeCallback(drumGui.getWindow(), framebufferSizeCB);
 
 	drumGui.compileShaders("shaders/default.vert","shaders/default.frag");
 	drumGui.enableDepthTest();
 	drumGui.enableBlending();
 	drumGui.setPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	drumGui.initStrikeMarker();
 
 	glm::mat4 model = glm::mat4(1.0f);
 	glm::mat4 view  = glm::mat4(1.0f);
@@ -160,14 +170,21 @@ int main(int argc, char** argv) {
 		view  = glm::mat4(1.0f);
 		proj  = glm::mat4(1.0f);
 
+		int w, h;
+		glfwGetWindowSize(drumGui.getWindow(), &w, &h);
+
 		model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
 		view  = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.5f));
 		view  = glm::rotate(view, glm::radians(tilt), glm::vec3(1.0f, 0.0f, 0.0f));
-		proj  = glm::perspective(glm::radians(fov), (float)WIDTH / HEIGHT, 2.0f, 100.0f);
+		proj  = glm::perspective(glm::radians(fov), (float)w / h, 2.0f, 100.0f);
 
 		drumGui.setMatrices(model, view, proj);
 		drumGui.setUniform1f("scale", 0.5f);
+		drumGui.setUniform3f("uMarkerOffset", 0.0f, 0.0f, 0.0f);
+		drumGui.setUniform4f("uColor", 1.0f, 1.0f, 1.0f, 0.3f);
 		drumGui.drawElements();
+		drumGui.drawStrikeMarker(ctrl.markerQueue, 0.1f);
+
 		drumGui.swapBuffers();
 	}
 

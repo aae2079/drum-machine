@@ -90,9 +90,9 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the F
 - [x] Add FPS counter display
 
 ### Task 3.3: Real-time Simulation Loop
-- [ ] Decouple physics timestep from render framerate
-- [ ] Physics: 10-50 substeps per render frame (tune for stability)
-- [ ] Implement game loop:
+- [x] Decouple physics timestep from render framerate
+- [x] Physics: 10-50 substeps per render frame (tune for stability)
+- [x] Implement game loop:
   ```cpp
   while (running) {
       handleInput();
@@ -114,15 +114,15 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the F
 ## Phase 4: Interactive Controls - Basic (Week 4)
 
 ### Task 4.1: Mouse Click for Excitation
-- [ ] Implement mouse event handling
-- [ ] Convert screen coordinates to grid coordinates
-- [ ] Apply Gaussian velocity impulse at click location
+- [x] Implement mouse event handling
+- [x] Convert screen coordinates to grid coordinates
+- [x] Apply Gaussian velocity impulse at click location
 - [ ] Visual feedback: circle at strike point
 - [ ] Support click-and-drag for strike intensity (optional)
 - [ ] Remove hard-coded excitation code
 
 ### Task 4.2: Keyboard Controls
-- [ ] Implement parameter adjustment keys:
+- [x] Implement parameter adjustment keys:
   - `↑/↓`: Adjust damping ±0.0001
   - `→/←`: Adjust membrane tension (wave speed c)
   - `+/-`: Adjust strike intensity
@@ -131,7 +131,6 @@ Build a physically-accurate drum machine by simulating a 2D membrane using the F
   - `P`: Pause/resume simulation
   - `R`: Start/stop WAV recording
   - `ESC`: Quit application
-- [ ] Add key repeat handling
 - [ ] Provide visual feedback for parameter changes
 
 ### Task 4.3: Display Basic Info

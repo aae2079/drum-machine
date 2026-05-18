@@ -9,7 +9,9 @@ in vec3 color;
 // Inputs the texture coordinates from the Vertex Shader
 in vec2 texCoord;
 
+uniform vec4 uColor;
+
 void main()
 {
-	FragColor = vec4(1.0,1.0,1.0,0.3); //solid white
+	FragColor = uColor;
 }

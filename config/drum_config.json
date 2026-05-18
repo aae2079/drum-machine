@@ -16,7 +16,7 @@
     },
 
     "dimensions":{
-        "grid_r": 50,
+        "grid_r": 100,
         "grid_th": 75
     },
 

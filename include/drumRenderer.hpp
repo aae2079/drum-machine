@@ -21,6 +21,7 @@ class DrumRenderer{
 
         //Window Managagment
         bool init();
+        void initStrikeMarker();
         bool shouldClose() const;
         void swapBuffers();
         void pollEvents();
@@ -45,6 +46,7 @@ class DrumRenderer{
         void setClearColor(float r, float g, float b, float a);
         void clear();
         void drawElements();
+        void drawStrikeMarker(std::queue<StrikeMarker>& markerQueue, float fadeTime);
 
         // Render State
         void enableDepthTest();
@@ -57,7 +59,8 @@ class DrumRenderer{
         // Uniform Setters
         void setUniform1f(const char* uniformName, float value);
         void setUniformMatrix4fv(const char* uniformName, const glm::mat4& matrix);
-
+        void setUniform3f(const char* uniformName, float v0, float v1, float v2);
+        void setUniform4f(const char* uniformName, float v0, float v1, float v2, float v3);
 
         GLFWwindow* getWindow() const;
         int getWindowWidth() const;
@@ -75,6 +78,7 @@ class DrumRenderer{
         void buildCircularMesh();
         
         GLuint vao, vbo, ebo;
+        GLuint marker_vao, marker_vbo, markerVertexCount;
         GLuint shaderProgramID;
 
         //meshData
@@ -95,6 +99,10 @@ class DrumRenderer{
         void unbindVBO();
         void bindEBO();
         void unbindEBO();
+
+        void bindMarkersVBO();
+        void unbindMarkersVBO();
+
 };
 
 #endif

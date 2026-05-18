@@ -6,8 +6,8 @@
 using namespace std;
 
 DrumRenderer::DrumRenderer(uint32_t wWidth, uint32_t wHeight, int gridR, int gridTH, const char* windowTitle)
-        : WIDTH(wWidth), HEIGHT(wHeight), windowTitle(windowTitle), window(nullptr), vao(0), vbo(0), ebo(0), shaderProgramID(0),
-		  gridR_(gridR), gridTH_(gridTH), gridX(50), gridY(50) {
+        : WIDTH(wWidth), HEIGHT(wHeight), windowTitle(windowTitle), window(nullptr), vao(0), vbo(0), ebo(0), marker_vao(0), marker_vbo(0), markerVertexCount(0), 
+        shaderProgramID(0),gridR_(gridR), gridTH_(gridTH), gridX(50), gridY(50) {
 }
 
 DrumRenderer::~DrumRenderer() {
@@ -46,6 +46,33 @@ bool DrumRenderer::init(){
     buildCircularMesh();
 
     return true;
+}
+
+void DrumRenderer::initStrikeMarker(){
+    const int segments = 100;
+    const float radius = 0.02f;
+    std::vector<GLfloat> markerVertices;
+    markerVertices.push_back(0.0f); // center x
+    markerVertices.push_back(0.0f); // center y
+    markerVertices.push_back(0.0f); // center z
+    for (int i = 0; i < segments; i++) {
+        float theta = 2.0f * M_PI * float(i) / float(segments);
+        float x = radius * cos(theta);
+        float y = radius * sin(theta);
+        markerVertices.push_back(x);
+        markerVertices.push_back(y); // y
+        markerVertices.push_back(0.0f);
+    }
+    markerVertexCount = segments + 1;
+    glGenVertexArrays(1, &marker_vao);
+    glBindVertexArray(marker_vao);
+    glGenBuffers(1, &marker_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, marker_vbo);
+    glBufferData(GL_ARRAY_BUFFER, markerVertices.size() * sizeof(GLfloat), markerVertices.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 void DrumRenderer::buildCircularMesh() {
     int nRadial  = gridR_;  // Nr
@@ -417,9 +444,43 @@ void DrumRenderer::setUniform1f(const char* uniformName, float value)
     glUniform1f(loc, value);
 }
 
+void DrumRenderer::setUniform3f(const char* uniformName, float v0, float v1, float v2)
+{
+    GLint loc = glGetUniformLocation(shaderProgramID, uniformName);
+    glUniform3f(loc, v0, v1, v2);
+}
+
+void DrumRenderer::setUniform4f(const char* uniformName, float v0, float v1, float v2, float v3)
+{
+    GLint loc = glGetUniformLocation(shaderProgramID, uniformName);
+    glUniform4f(loc, v0, v1, v2, v3);
+}
+
 void DrumRenderer::drawElements(){
 	bindVertexArray();
 	glDrawElements(GL_TRIANGLES, indices_.size(), GL_UNSIGNED_INT, 0);
+}
+
+void DrumRenderer::drawStrikeMarker(std::queue<StrikeMarker>& markerQueue, float fadeTime){
+    std::queue<StrikeMarker> remaining;
+    while (!markerQueue.empty()) {
+        StrikeMarker marker = markerQueue.front();
+        markerQueue.pop();
+        float age = glfwGetTime() - marker.spawnTime;
+        float opacity = 1.0f - (age / fadeTime);
+        if (opacity > 0.0f) {
+            glm::mat4 identity(1.0f);
+            setMatrices(identity, identity, identity);
+            setUniform3f("uMarkerOffset", marker.x, marker.y, 0.0f);
+            setUniform4f("uColor", 1.0f, 0.0f, 0.0f, opacity);
+            glBindVertexArray(marker_vao);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, markerVertexCount);
+            glBindVertexArray(0);
+            remaining.push(marker);
+        }
+    }
+    markerQueue = std::move(remaining);
+    setUniform3f("uMarkerOffset", 0.0f, 0.0f, 0.0f);
 }
 
 void DrumRenderer::enableDepthTest()
@@ -438,6 +499,7 @@ void DrumRenderer::setPolygonMode(GLenum face, GLenum mode)
     glPolygonMode(face, mode);
 }
 
+
 void DrumRenderer::deleteBuffers(){
 	if (vao != 0) {
 		glDeleteVertexArrays(1, &vao);
@@ -451,6 +513,15 @@ void DrumRenderer::deleteBuffers(){
 		glDeleteBuffers(1, &ebo);
 		ebo = 0;
 	}
+
+    if(marker_vao != 0) {
+        glDeleteVertexArrays(1, &marker_vao);
+        marker_vao = 0;
+    }
+    if(marker_vbo != 0) {
+        glDeleteBuffers(1, &marker_vbo);
+        marker_vbo = 0;
+    }
 }
 
 void DrumRenderer::deleteShaderProgram()

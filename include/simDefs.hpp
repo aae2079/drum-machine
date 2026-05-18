@@ -9,6 +9,17 @@
     #define M_PI 3.14159265358979323846
 #endif
 
+struct StrikeMarker {
+    float x,y;
+    double spawnTime;
+};
+
+struct MarkerParams {
+    float fade_time;
+    float size;
+    float color[3];
+};
+
 typedef struct{
     /*
     Surface density for Mylar drum head (kg/m^2).
