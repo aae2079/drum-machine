@@ -77,12 +77,20 @@ void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
             float dist2 = (xi - xs)*(xi - xs) + (zi - zs)*(zi - zs);
             // sigma=0.08: ~14% amplitude at 5 ring-units, ~0% at 10 ring-units
             float val   = strike->amplitude * std::exp(-0.08f * dist2);
-            u_curr_[ir * Ntheta_ + itheta] = val;
-            u_prev_[ir * Ntheta_ + itheta] = val;
+            u_curr_[ir * Ntheta_ + itheta] += val;
+            u_prev_[ir * Ntheta_ + itheta] += val;
         }
     }
 }
 
+/*
+To be used only when a new strike comes in
+*/
+void CircularMembrane::resetStateVectors(){
+    u_prev_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
+    u_curr_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
+    u_next_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
+}
 
 void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
     // Run exactly enough physics steps to cover one audio buffer's worth of time.

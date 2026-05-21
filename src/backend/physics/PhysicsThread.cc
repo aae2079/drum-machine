@@ -47,7 +47,7 @@ void PhysicsThread::run(Params params) {
         }
 
         while (running_) {
-            //Read strike events
+            //check for more events coming in
             {
                 std::lock_guard<std::mutex> lock(strikeMtx_);
                 if (!strikeQueue_.empty()) {
@@ -70,7 +70,10 @@ void PhysicsThread::run(Params params) {
             // Send audio data (may block briefly if the ring buffer is full).
             sendAudioChunk(physBuf, params.audio.bufferSize, params.audio.sampleRate);
 
-            if (!membrane_.isActive()) break;
+            if (!membrane_.isActive()){
+                membrane_.resetStateVectors();
+                break;
+            }
         }
     }
 }

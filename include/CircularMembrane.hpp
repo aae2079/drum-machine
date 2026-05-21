@@ -25,6 +25,8 @@ public:
     float& getSimRate() { return simRate_; }
     void getVelocityField();
 
+    void resetStateVectors();
+
     bool isActive();
     
     void setInitialCondition(const StrikeDefs* strike);
