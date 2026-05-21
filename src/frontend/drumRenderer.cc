@@ -5,9 +5,11 @@
 
 using namespace std;
 
-DrumRenderer::DrumRenderer(uint32_t wWidth, uint32_t wHeight, int gridR, int gridTH, const char* windowTitle)
-        : WIDTH(wWidth), HEIGHT(wHeight), windowTitle(windowTitle), window(nullptr), vao(0), vbo(0), ebo(0), marker_vao(0), marker_vbo(0), markerVertexCount(0), 
-        shaderProgramID(0),gridR_(gridR), gridTH_(gridTH), gridX(50), gridY(50) {
+DrumRenderer::DrumRenderer(uint32_t wWidth, uint32_t wHeight, int gridR, int gridTH, float shellLength, const char* windowTitle)
+        : WIDTH(wWidth), HEIGHT(wHeight), windowTitle(windowTitle), window(nullptr), vao(0), vbo(0), ebo(0),
+          shell_vao(0), shell_vbo(0), shell_ebo(0), shellIndexCount_(0),
+          marker_vao(0), marker_vbo(0), markerVertexCount(0),
+          shaderProgramID(0), gridR_(gridR), gridTH_(gridTH), shellLength_(shellLength), gridX(50), gridY(50) {
 }
 
 DrumRenderer::~DrumRenderer() {
@@ -43,7 +45,8 @@ bool DrumRenderer::init(){
 
     glViewport(0,0, WIDTH, HEIGHT);
 
-    buildCircularMesh();
+    buildMesh();
+    buildShell();
 
     return true;
 }
@@ -74,7 +77,7 @@ void DrumRenderer::initStrikeMarker(){
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
-void DrumRenderer::buildCircularMesh() {
+void DrumRenderer::buildMesh() {
     int nRadial  = gridR_;  // Nr
     int nAngular = gridTH_;  // Ntheta
 
@@ -163,55 +166,78 @@ void DrumRenderer::buildCircularMesh() {
                   indices_.data(), indices_.size() * sizeof(GLuint));
     setupVertexAttributes();
 }
-void DrumRenderer::buildMesh(){
-    for(int i = 0; i < gridX; i++){
-		for (int j = 0; j < gridY; j++){
-			float x = (float)j / (gridX - 1) * 2.0f - 1.0f; 
-			float z = (float)i / (gridY - 1) * 2.0f - 1.0f;
-			float y = 0.0f; 
 
-			// position
-			vertices_.push_back(x);
-			vertices_.push_back(y);
-			vertices_.push_back(z);
-			// color
-			vertices_.push_back(0.0f);
-			vertices_.push_back(0.0f);
-			vertices_.push_back(0.0f);
-			// TexCoord
-			vertices_.push_back((float)j / (gridY - 1));
-			vertices_.push_back((float)i / (gridX - 1));
-			// normal
-			vertices_.push_back(0.0f);
-			vertices_.push_back(1.0f);
-			vertices_.push_back(0.0f);
-		}
-	}
 
-	// Generate indices
-	for (int i = 0; i < gridX - 1; i++) {
-		for (int j = 0; j < gridY - 1; j++) {
-			int topLeft     = i * gridX + j;
-			int topRight    = i * gridX + j + 1;
-			int bottomLeft  = (i + 1) * gridX + j;
-			int bottomRight = (i + 1) * gridX + j + 1;
+void DrumRenderer::buildShell() {
+    const float radius = 1.0f;  // matches membrane radius
+    const int nAngular = gridTH_;
+    const int numRings = 10; // top and bottom
 
-			// triangle 1
-			indices_.push_back(topLeft);
-			indices_.push_back(bottomLeft);
-			indices_.push_back(topRight);
-			// triangle 2
-			indices_.push_back(topRight);
-			indices_.push_back(bottomLeft);
-			indices_.push_back(bottomRight);
-		}
-	}
+    // Two rings: top (y=0, flush with membrane edge) and bottom (y=-shellLength_)
+    for (int ring = 0; ring < numRings; ring++) {
+        float t = (float)ring / (numRings - 1);
+        float y = -t * shellLength_;
 
-    createBuffers(vertices_.data(), vertices_.size() * sizeof(GLfloat),
-                  indices_.data(), indices_.size() * sizeof(GLuint));
-    setupVertexAttributes();
+        for (int a = 0; a < nAngular; a++) {
+            float theta = 2.0f * M_PI * (float)a / nAngular;
+            float x  = radius * cos(theta);
+            float z  = radius * sin(theta);
+            float nx = cos(theta);  // outward radial normal
+            float nz = sin(theta);
+
+            shellVertices_.insert(shellVertices_.end(), {
+                x, y, z,                          // position
+                0.0f, 0.0f, 0.0f,                 // color
+                (float)a / nAngular, (float)ring,  // texcoord
+                nx, 0.0f, nz                       // normal
+            });
+        }
+    }
+
+    // Quad strip connecting each adjacent pair of rings
+    for (int ring = 0; ring < numRings - 1; ring++) {
+        GLuint topBase = ring * nAngular;
+        GLuint botBase = (ring + 1) * nAngular;
+        for (int a = 0; a < nAngular; a++) {
+            int aNext = (a + 1) % nAngular;
+            GLuint t0 = topBase + a,      t1 = topBase + aNext;
+            GLuint b0 = botBase + a,      b1 = botBase + aNext;
+
+            shellIndices_.insert(shellIndices_.end(), { t0, b0, t1 });
+            shellIndices_.insert(shellIndices_.end(), { t1, b0, b1 });
+        }
+    }
+
+    shellIndexCount_ = (GLsizei)shellIndices_.size();
+
+    glGenVertexArrays(1, &shell_vao);
+    glBindVertexArray(shell_vao);
+
+    glGenBuffers(1, &shell_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, shell_vbo);
+    glBufferData(GL_ARRAY_BUFFER, shellVertices_.size() * sizeof(GLfloat), shellVertices_.data(), GL_STATIC_DRAW);
+
+    glGenBuffers(1, &shell_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shell_ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, shellIndices_.size() * sizeof(GLuint), shellIndices_.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (void*)(8 * sizeof(float)));
+    glEnableVertexAttribArray(3);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
+void DrumRenderer::drawShell() {
+    glBindVertexArray(shell_vao);
+    glDrawElements(GL_TRIANGLE_STRIP_ADJACENCY, shellIndexCount_, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
 
 bool DrumRenderer::shouldClose() const
 {
@@ -513,6 +539,19 @@ void DrumRenderer::deleteBuffers(){
 		glDeleteBuffers(1, &ebo);
 		ebo = 0;
 	}
+
+    if (shell_vao != 0) {
+        glDeleteVertexArrays(1, &shell_vao);
+        shell_vao = 0;
+    }
+    if (shell_vbo != 0) {
+        glDeleteBuffers(1, &shell_vbo);
+        shell_vbo = 0;
+    }
+    if (shell_ebo != 0) {
+        glDeleteBuffers(1, &shell_ebo);
+        shell_ebo = 0;
+    }
 
     if(marker_vao != 0) {
         glDeleteVertexArrays(1, &marker_vao);

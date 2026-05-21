@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
 	physEngine.start(ctrl.params);
 	ctrl.physThread = &physEngine;
 
-	DrumRenderer drumGui(WIDTH, HEIGHT, ctrl.params.grid.grid_r, ctrl.params.grid.grid_th, "Drum Machine");
+	DrumRenderer drumGui(WIDTH, HEIGHT, ctrl.params.grid.grid_r, ctrl.params.grid.grid_th, ctrl.params.timbre.shell_length, "Drum Machine");
 	if (!drumGui.init()){
 		std::cerr << "Failed to initialize Drum Machine" << std::endl;
 	}
@@ -183,6 +183,7 @@ int main(int argc, char** argv) {
 		drumGui.setUniform3f("uMarkerOffset", 0.0f, 0.0f, 0.0f);
 		drumGui.setUniform4f("uColor", 1.0f, 1.0f, 1.0f, 0.3f);
 		drumGui.drawElements();
+		drumGui.drawShell();
 		drumGui.drawStrikeMarker(ctrl.markerQueue, 0.1f);
 
 		drumGui.swapBuffers();

@@ -16,7 +16,7 @@
 
 class DrumRenderer{
     public:
-        DrumRenderer(uint32_t wWidth, uint32_t wHeight, int gridR, int gridTH, const char* windowTitle = "Drum Machine");
+        DrumRenderer(uint32_t wWidth, uint32_t wHeight, int gridR, int gridTH, float shellLength = 0.5f, const char* windowTitle = "Drum Machine");
         ~DrumRenderer();
 
         //Window Managagment
@@ -46,6 +46,7 @@ class DrumRenderer{
         void setClearColor(float r, float g, float b, float a);
         void clear();
         void drawElements();
+        void drawShell();
         void drawStrikeMarker(std::queue<StrikeMarker>& markerQueue, float fadeTime);
 
         // Render State
@@ -75,17 +76,22 @@ class DrumRenderer{
         std::string windowTitle;
 
         void buildMesh();
-        void buildCircularMesh();
+        void buildShell();
         
         GLuint vao, vbo, ebo;
+        GLuint shell_vao, shell_vbo, shell_ebo;
+        GLsizei shellIndexCount_;
         GLuint marker_vao, marker_vbo, markerVertexCount;
         GLuint shaderProgramID;
 
         //meshData
         std::vector<GLfloat> vertices_;
         std::vector<GLuint> indices_;
+        std::vector<GLfloat> shellVertices_;
+        std::vector<GLuint> shellIndices_;
         int gridR_;
         int gridTH_;
+        float shellLength_;
 
         int gridX;
         int gridY;

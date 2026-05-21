@@ -30,6 +30,7 @@ typedef struct{
     float material_density; // in kg/m^2
     float tension; // in N/m
     float radius; // in meters
+    float shell_length; // in meters
     float damping; // in s⁻¹, energy loss rate — higher = faster decay
 }TimbreParams;
 

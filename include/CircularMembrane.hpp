@@ -23,11 +23,12 @@ public:
 
     std::vector<float>& getCurrentGrid() { return u_curr_; }
     float& getSimRate() { return simRate_; }
+    void getVelocityField();
 
     bool isActive();
     
     void setInitialCondition(const StrikeDefs* strike);
-    void Simulate(int physSteps, std::vector<float>& physBuf);
+    virtual void Simulate(int physSteps, std::vector<float>& physBuf);
 
 
 private:
@@ -52,6 +53,9 @@ private:
     std::vector<float> u_curr_; // membrane state at current time step
     std::vector<float> u_next_; // membrane state at next time step
     std::vector<float> simBuf_; // buffer for current simulation chunk
+
+    std::vector<float> pressureInput_;
+    std::vector<float> velocityOutput_;
     
 
 };

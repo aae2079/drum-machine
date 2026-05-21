@@ -39,6 +39,7 @@ static bool parseJsonSettings(const std::string& filename, Params& params) {
             params.timbre.material_density = params.timbre.membrane_thickness * timbre["material_density"].GetFloat();
             params.timbre.tension = timbre["tension"].GetFloat();
             params.timbre.radius = timbre["radius"].GetFloat();
+            params.timbre.shell_length = timbre["shell_length"].GetFloat();
             params.timbre.damping = timbre["damping"].GetFloat();
         }
         if (doc.HasMember("dimensions") && doc["dimensions"].IsObject()) {

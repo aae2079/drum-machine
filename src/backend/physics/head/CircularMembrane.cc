@@ -35,6 +35,9 @@ void CircularMembrane::init(float radius, float damp, float tension, float rho_d
     u_curr_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_next_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
 
+    pressureInput_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
+    velocityOutput_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
+
     // Dirichlet fixed outer boundary: all angular positions at r = Nr_-1
     for (int jj = 0; jj < Ntheta_; jj++) {
         u_curr_[(Nr_ - 1) * Ntheta_ + jj] = 0.0f;
@@ -115,6 +118,11 @@ void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
                 u_next_[ii * Ntheta_ + jj] = (2.0f * u_curr_[ii * Ntheta_ + jj]
                     - u_prev_[ii * Ntheta_ + jj] * (1.0f - gamma_dt)
                     + (c_ * c_ * dt_ * dt_) * laplacian) / (1.0f + gamma_dt);
+            
+                
+                velocityOutput_[ii * Ntheta_ + jj] =
+                (u_curr_[ii * Ntheta_ + jj]
+                - u_prev_[ii * Ntheta_ + jj]) / dt_;
             }
         }
 
