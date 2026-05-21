@@ -33,6 +33,8 @@ bool PhysicsThread::tryGetGrid(std::vector<float>& out, int timeoutMs) {
 void PhysicsThread::run(Params params) {
     membrane_.init(params.timbre.radius, params.timbre.damping, params.timbre.tension,
                   params.timbre.material_density, params.grid.grid_r, params.grid.grid_th);
+    shell_.init();
+    
     int physBufferSize = (int)((params.audio.bufferSize / params.audio.sampleRate) * membrane_.getSimRate());
     std::vector<float> physBuf(physBufferSize, 0.0f);
     while (running_) {
@@ -57,7 +59,7 @@ void PhysicsThread::run(Params params) {
                 }
             }
 
-            membrane_.Simulate(physBufferSize, physBuf);
+            // membrane_.Simulate(physBufferSize, physBuf);
 
             // Send GUI data first — don't let a full audio ring buffer delay the visual update.
             {

@@ -1,9 +1,15 @@
 #include "CircularMembrane.hpp"
-class CylindricalResonator : public CircularMembrane {
+class CylindricalResonator {
 
     public:
-    
+    CylindricalResonator();
+    ~CylindricalResonator();
+
+    void init(float length);
+
+    void Simulate();
+
     private:
-    float height_;
+
 
 };

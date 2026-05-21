@@ -10,6 +10,7 @@
 #include "audioEngine.hpp"
 #include "audioDSP.hpp"
 #include "CircularMembrane.hpp"
+#include "CylindricalResonator.hpp"
 
 class PhysicsThread {
 public:
@@ -27,6 +28,7 @@ private:
     void sendAudioChunk(std::vector<float>& chunk, int bufferSize, float sampleRate);
 
     CircularMembrane membrane_;
+    CylindricalResonator shell_;
 
     std::queue<StrikeDefs> strikeQueue_;
     std::mutex strikeMtx_;

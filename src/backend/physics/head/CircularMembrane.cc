@@ -1,12 +1,7 @@
-// CircularMembrane.cpp
-// Implementation skeleton for CircularMembrane.
-// No method definitions are provided here — implement them in this file when ready.
-
 #include "CircularMembrane.hpp"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
-// Intentionally empty: method implementations can be added by the developer.
 
 CircularMembrane::CircularMembrane() {}
 
@@ -17,6 +12,7 @@ CircularMembrane::~CircularMembrane() {
     u_next_.clear();
     simBuf_.clear();
 }
+
 void CircularMembrane::init(float radius, float damp, float tension, float rho_density, unsigned int Nr, unsigned int Ntheta){
     radius_ = radius;
     tension_ = tension;
@@ -26,7 +22,7 @@ void CircularMembrane::init(float radius, float damp, float tension, float rho_d
     Ntheta_ = Ntheta;
     dr_ = radius_ / (Nr_ - 1); // radial step size based on radius and number of radial samples
     dtheta_ = 2 * M_PI / Ntheta_; // angular step size based on number of angular samples
-    c_ = std::sqrt(tension_ / rho_);       // wave speed m/s
+    c_ = std::sqrt(tension_ / rho_);// wave speed m/s
     dt_ = CFL * dr_ / c_; // time step based on CFL condition for stability
     simRate_ = 1.0f / dt_; // simulation sample rate in Hz
     
@@ -55,11 +51,10 @@ void CircularMembrane::cleanup() {
 }
 
 bool CircularMembrane::isActive(){
-    //find max in physics buffer
-    if (maxAmplitude_ < 0.000001f) { // threshold for "active" state, can be tuned
+    if (maxAmplitude_ < 0.000001f) { 
         return false; // membrane is effectively at rest
     }
-    return true; // membrane is still vibrating
+    return true; 
 }
 
 void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
@@ -83,18 +78,15 @@ void CircularMembrane::setInitialCondition(const StrikeDefs* strike){
     }
 }
 
-/*
-To be used only when a new strike comes in
-*/
 void CircularMembrane::resetStateVectors(){
     u_prev_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_curr_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_next_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
+    pressureInput_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
+    velocityOutput_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
 }
 
 void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
-    // Run exactly enough physics steps to cover one audio buffer's worth of time.
-    // sampleInterp() on simBuf_ will then produce exactly BUFFER_SIZE audio sample
     for(int tt = 0; tt < physSteps; tt++){
         // --- spatial update ----
         //#pragma omp parallel for schedule(static)
@@ -112,9 +104,6 @@ void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
                 float term_r = du_dr / r;
 
                 // (1/r^2) * d2u/dtheta2
-                // Skip angular term where 1/r² makes the Courant number > 1.
-                // Stability requires: ii * dtheta_ >= CFL  (derived from c*dt/(ir*dr*dtheta) <= 1).
-                // Near-origin rings are effectively symmetric from the origin averaging condition.
                 float term_theta = 0.0f;
                 if ((float)ii * dtheta_ >= CFL) {
                     float d2u_dtheta2 = (u_curr_[ii * Ntheta_ + j_plus] - 2.0 * u_curr_[ii * Ntheta_ + jj] + u_curr_[ii * Ntheta_ + j_minus]) / (dtheta_ * dtheta_);
@@ -122,15 +111,13 @@ void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
                 }
                 float laplacian = d2u_dr2 + term_r + term_theta;
 
+                float pressure_term = pressureInput_[ii * Ntheta_ + jj] / rho_;
+
                 float gamma_dt = damp_ * dt_;
                 u_next_[ii * Ntheta_ + jj] = (2.0f * u_curr_[ii * Ntheta_ + jj]
                     - u_prev_[ii * Ntheta_ + jj] * (1.0f - gamma_dt)
-                    + (c_ * c_ * dt_ * dt_) * laplacian) / (1.0f + gamma_dt);
+                    + (c_ * c_ * dt_ * dt_) * laplacian + (dt_ * dt_) * pressure_term) / (1.0f + gamma_dt);
             
-                
-                velocityOutput_[ii * Ntheta_ + jj] =
-                (u_curr_[ii * Ntheta_ + jj]
-                - u_prev_[ii * Ntheta_ + jj]) / dt_;
             }
         }
 
@@ -148,10 +135,9 @@ void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
         for (int jj = 0; jj < Ntheta_; jj++){
             u_next_[0 * Ntheta_ + jj] = avg;
         }
-        //sample audio at center of membrane
-        physBuf[tt] = 1.0f * u_curr_[0]; // center point r=0, all theta the same
+        
+        physBuf[tt] = 1.0f * u_curr_[0]; // "mic" at center
 
-        //advance  simulation
         std::swap(u_prev_, u_curr_);
         std::swap(u_curr_, u_next_);
 
@@ -161,12 +147,17 @@ void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
         }
     }
 
-    // Track peak amplitude so isActive() can detect when the membrane is at rest.
-    // Must scan the full grid — center-point samples won't reflect a wave that hasn't
-    // propagated inward yet (e.g. a strike near the boundary).
     maxAmplitude_ = 0.0f;
     for (float v : u_curr_) maxAmplitude_ = std::max(maxAmplitude_, std::abs(v));
 }
 
+std::vector<float>& CircularMembrane::getVelocityField(){
+    for (int ii = 0; ii < Nr_; ii++) {
+        for (int jj = 0; jj < Ntheta_; jj++) {
+            velocityOutput_[ii * Ntheta_ + jj] = (u_curr_[ii * Ntheta_ + jj] - u_prev_[ii * Ntheta_ + jj]) / dt_;
+        }
+    }
+    return velocityOutput_;
+}
 
 

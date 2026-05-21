@@ -22,15 +22,17 @@ public:
     void cleanup();
 
     std::vector<float>& getCurrentGrid() { return u_curr_; }
+    std::vector<float>& getPreviousGrid() { return u_prev_; }
     float& getSimRate() { return simRate_; }
-    void getVelocityField();
+    std::vector<float>& getVelocityField();
 
     void resetStateVectors();
 
     bool isActive();
     
     void setInitialCondition(const StrikeDefs* strike);
-    virtual void Simulate(int physSteps, std::vector<float>& physBuf);
+    void setPressure(const std::vector<float>& pressure){ pressureInput_ = pressure; };
+    void Simulate(int physSteps, std::vector<float>& physBuf);
 
 
 private:
