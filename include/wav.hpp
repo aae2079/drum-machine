@@ -5,10 +5,10 @@
 #include <fstream>
 #include <cstdio>
 #include <vector>
-using namespace std;
+#include audioDefs.hpp
 
 
-typedef struct WAV_HEADER {
+struct WAV_HEADER {
     /* RIFF Chunk Descriptor */
     char    riff[4];
     int32_t chunkSize;
@@ -25,9 +25,28 @@ typedef struct WAV_HEADER {
     /*"data" sub-chunk */
     char    subchunk2ID[4];
     int32_t subchunk2Size;
-} wavHeader;
+};
+
+template <typename T>
+class WavEngine{
+    public:
+        WavEngine(std::string& filename);
+        ~WavEngine();
+        void buildHeader(AudioDefinitions& audioDefs){
+            
+        }
 
 
+
+    private:
+        WAV_HEADER wav_;
+        void convertTypeToInt16(const std::vector<T> &input, std::vector<int16_t> &output){
+            output.resize(input.size());
+            for (int ii = 0; ii < input.size(); ii++){
+                ouput[i] = static_cast<int16_t>(input[ii] * 32767);
+            }
+        }
+}
 
 
 #endif
