@@ -27,6 +27,9 @@ struct WAV_HEADER {
     int32_t subchunk2Size;
 };
 
+/*
+WAV I/O class
+*/
 template <typename T>
 class WavEngine{
     public:
