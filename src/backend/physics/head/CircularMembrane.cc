@@ -25,7 +25,7 @@ void CircularMembrane::init(float radius, float damp, float tension, float rho_d
     c_ = std::sqrt(tension_ / rho_);// wave speed m/s
     dt_ = CFL * dr_ / c_; // time step based on CFL condition for stability
     simRate_ = 1.0f / dt_; // simulation sample rate in Hz
-    
+    maxAmplitude_ = 0.0f;
     // Initialize state vectors
     u_prev_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     u_curr_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
@@ -84,7 +84,16 @@ void CircularMembrane::resetStateVectors(){
     u_next_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     pressureInput_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
     velocityOutput_ = std::vector<float>(Nr_ * Ntheta_, 0.0f);
+
+    //reset BC
+    // Dirichlet fixed outer boundary: all angular positions at r = Nr_-1
+    for (int jj = 0; jj < Ntheta_; jj++) {
+        u_curr_[(Nr_ - 1) * Ntheta_ + jj] = 0.0f;
+        u_prev_[(Nr_ - 1) * Ntheta_ + jj] = 0.0f;
+        u_next_[(Nr_ - 1) * Ntheta_ + jj] = 0.0f;
+    }
 }
+
 
 void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
     for(int tt = 0; tt < physSteps; tt++){
@@ -146,8 +155,6 @@ void CircularMembrane::Simulate(int physSteps, std::vector<float>& physBuf){
             break;
         }
     }
-
-    maxAmplitude_ = 0.0f;
     for (float v : u_curr_) maxAmplitude_ = std::max(maxAmplitude_, std::abs(v));
 }
 

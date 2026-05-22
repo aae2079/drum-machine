@@ -21,9 +21,12 @@ public:
     void init(float radius, float damp, float tension, float rho_density,unsigned int Nr, unsigned int Ntheta);
     void cleanup();
 
+    //getrs and setrs
     std::vector<float>& getCurrentGrid() { return u_curr_; }
     std::vector<float>& getPreviousGrid() { return u_prev_; }
     float& getSimRate() { return simRate_; }
+    float& getSpeed() { return c_; }
+    float& getTimeStep() { return dt_; }
     std::vector<float>& getVelocityField();
 
     void resetStateVectors();

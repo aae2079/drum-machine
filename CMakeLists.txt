@@ -33,6 +33,7 @@ set(SOURCES
     src/main.cc
     src/frontend/drumRenderer.cc
     src/backend/physics/head/CircularMembrane.cc
+    src/backend/physics/shell/CylindricalResonator.cc
     src/backend/physics/PhysicsThread.cc
     src/backend/audio/engine/audioEngine.cc
     src/backend/audio/dsp/audioDSP.cc
@@ -40,6 +41,7 @@ set(SOURCES
 )
 
 set(HEADERS
+    include/CylindricalResonator.hpp
     include/CircularMembrane.hpp
     include/RectangularMembrane.hpp
     include/Surface.hpp

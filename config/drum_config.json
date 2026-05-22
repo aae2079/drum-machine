@@ -11,14 +11,15 @@
         "membrane_thickness": 0.0002,
         "material_density": 1400.0,
         "tension": 200.0,
-        "radius": 0.5,
-        "shell_length": 0.4,
+        "radius": 0.3,
+        "shell_length": 0.5,
         "damping": 1.0
     },
 
     "dimensions":{
         "grid_r": 100,
-        "grid_th": 75
+        "grid_th": 75,
+        "grid_z" : 50
     },
 
     "zoom": {

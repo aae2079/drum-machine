@@ -46,6 +46,7 @@ static bool parseJsonSettings(const std::string& filename, Params& params) {
             const auto& dimensions = doc["dimensions"];
             params.grid.grid_r = dimensions["grid_r"].GetUint();
             params.grid.grid_th = dimensions["grid_th"].GetUint();
+            params.grid.grid_z = dimensions["grid_z"].GetUint();
         }
         if (doc.HasMember("zoom") && doc["zoom"].IsObject()) {
             const auto& zoom = doc["zoom"];

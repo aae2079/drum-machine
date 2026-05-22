@@ -37,6 +37,7 @@ typedef struct{
 typedef struct {
     unsigned int grid_r; // radial rings
     unsigned int grid_th; // angular samples per ring
+    unsigned int grid_z; // axial samples for shell
 }RadialDimensions;
 
 /*------- CircularMembrane Definitions----------*/
