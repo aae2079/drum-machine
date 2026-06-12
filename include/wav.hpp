@@ -93,7 +93,7 @@ class WavEngine{
             head_.subchunk2Size = buffSize * audioDefs_.bitDepth/8;
         }
 
-        void convertTypeToInt16(const T* input, size_t size, const int16_t* output){
+        void convertTypeToInt16(const T* input, size_t size, int16_t* output){
             for (int ii = 0; ii < size; ii++){
                 output[ii] = static_cast<int16_t>(input[ii] * 32767);
             }
