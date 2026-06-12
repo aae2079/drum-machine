@@ -8,6 +8,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <string>
 #include <vector>
+#include <queue>
 #include <fstream>
 #include <sstream>
 #include <iostream>

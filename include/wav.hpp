@@ -5,7 +5,7 @@
 #include <fstream>
 #include <cstdio>
 #include <vector>
-#include audioDefs_.hpp
+#include "audioDefs.hpp"
 
 
 struct WAV_HEADER {
@@ -33,8 +33,8 @@ WAV I/O class
 template <typename T>
 class WavEngine{
     public:
-        WavEngine(std::string& filename, AudioDefinitons& audioDefs):filename_(filename),audioDefs_(audioDefs);
-        ~WavEngine();
+        WavEngine(std::string& filename, AudioDefinitions& audioDefs):filename_(filename),audioDefs_(audioDefs){};
+        ~WavEngine(){};
 
 
         bool writeWavFile(float* audio, size_t size){
@@ -44,7 +44,7 @@ class WavEngine{
 
             fp_.open(filename_, std::ios::binary);
             if (!fp_.is_open()) return false;
-            fp_.write((char*)&head, sizeof(WAV_HEADER));
+            fp_.write((char*)&head_, sizeof(WAV_HEADER));
             fp_.write(reinterpret_cast<const char*>(out.data()),out.size());
             if (fp_.bad()) return false;
             fp_.close();
@@ -90,17 +90,17 @@ class WavEngine{
             head_.subchunk2ID[2] = 't';
             head_.subchunk2ID[3] = 'a';
 
-            head_.subchunk2Size = buffSize * audioDefs_.bitDepth/8
+            head_.subchunk2Size = buffSize * audioDefs_.bitDepth/8;
         }
 
         void convertTypeToInt16(const T* input, size_t size, const int16_t* output){
             for (int ii = 0; ii < size; ii++){
-                ouput[i] = static_cast<int16_t>(input[ii] * 32767);
+                output[ii] = static_cast<int16_t>(input[ii] * 32767);
             }
         }
 
-
-}
+        
+};
 
 
 #endif
