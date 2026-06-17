@@ -1,5 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 project(drum-machine)
+include(FetchContent)
+
+FetchContent_Declare(
+    JUCE
+    GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
+    GIT_TAG        8.0.13  
+    GIT_SHALLOW    TRUE
+)
+
+FetchContent_MakeAvailable(JUCE)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
