@@ -41,14 +41,13 @@ set(SOURCES
 )
 
 set(HEADERS
-    include/CylindricalResonator.hpp
-    include/CircularMembrane.hpp
-    include/RectangularMembrane.hpp
-    include/Surface.hpp
-    include/audioDefs.hpp
-    include/audioDSP.hpp
+    include/physics/CylindricalResonator.hpp
+    include/physics/CircularMembrane.hpp
+    include/physics/RectangularMembrane.hpp
+    include/audio/AudioDefs.hpp
+    include/audio/AudioDSP.hpp
     include/strikeDefs.hpp
-    include/drumRenderer.hpp
+    include/gui/drumRenderer.hpp
     dependencies/glad/glad.h
     dependencies/KHR/khrplatform.h
 )
