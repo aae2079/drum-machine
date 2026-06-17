@@ -8,7 +8,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <cstring>
-#include "portaudio.h"
+#include <juce_audio_devices/juce_audio_devices.h>
 #include "simDefs.hpp"
 
 #define NUM_FRAMES 10
@@ -18,25 +18,33 @@ struct Data {
     std::atomic<int> full{0};
 };
 
-class AudioEngine {
+class AudioEngine : public juce::AudioIODeviceCallback {
 public:
     AudioEngine(int sampleRate = 48000, int bufferSize = 512);
-    ~AudioEngine();
+    ~AudioEngine() override;
     void start();
     void stop();
     void delay();
     void mute(bool shouldMute) { muted_ = shouldMute; }
     void pushChunk(const float* buffer, size_t numSamples);
+
+
 private:
-    PaStream *mainStream = nullptr;
-    PaStreamParameters outputParameters;
-    PaError err;
+    // juce::AudioIODeviceCallback overrides
+    void audioDeviceIOCallbackWithContext(
+        const float* const* inputChannelData,
+        int numInputChannels,
+        float* const* outputChannelData,
+        int numOutputChannels,
+        int numSamples,
+        const juce::AudioIODeviceCallbackContext& context) override;
+ 
+    void audioDeviceAboutToStart(juce::AudioIODevice* device) override;
+    void audioDeviceStopped() override;
 
-    static int paStreamCB(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
-                              const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void *userData);
-    static void paStreamFinished(void *userData);
+    void internalAudioCB(float *out, int frames);
 
-    int internalAudioCB(float *out, unsigned long frames);
+    juce::AudioDeviceManager deviceManager_;
 
     std::array<Data, NUM_FRAMES> ringBuf;
 

@@ -3,69 +3,28 @@
 AudioEngine::AudioEngine(int sampleRate, int bufferSize)
     : _sampleRate(sampleRate), _bufferSize(bufferSize)
 {
-    err = Pa_Initialize();
-    if (err != paNoError) {
-        std::cerr << "PortAudio initialization failed: " << Pa_GetErrorText(err)
-                  << " (" << err << ")" << std::endl;
-        Pa_Terminate();
-        return;
-    }
+    deviceManager_.initialiseWithDefaultDevices(0, 1);
 
-    outputParameters.device = Pa_GetDefaultOutputDevice();
-    if (outputParameters.device == paNoDevice) {
-        std::cerr << "No default output device." << std::endl;
-        Pa_Terminate();
-        return;
-    }
-    outputParameters.channelCount = 1;
-    outputParameters.sampleFormat = paFloat32;
-    outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
-    outputParameters.hostApiSpecificStreamInfo = nullptr;
+    juce::AudioDeviceManager::AudioDeviceSetup setup;
+    deviceManager_.getAudioDeviceSetup(setup);
+    setup.sampleRate = sampleRate;
+    setup.bufferSize = bufferSize;
+    auto result = deviceManager_.setAudioDeviceSetup(setup, true);
+    if (result.isNotEmpty())
+        std::cerr << "Warning: could not set sample rate to " 
+                  << sampleRate << ": " << result.toStdString() << "\n";
 }
 
 AudioEngine::~AudioEngine() {
     stop();
-    Pa_Terminate();
 }
 
 void AudioEngine::start() {
-    err = Pa_OpenStream(&mainStream, nullptr, &outputParameters, _sampleRate, _bufferSize,
-                        paClipOff, paStreamCB, this);
-    if (err != paNoError) {
-        std::cerr << "PortAudio open stream failed: " << Pa_GetErrorText(err)
-                  << " (" << err << ")" << std::endl;
-        Pa_Terminate();
-        return;
-    }
-
-    err = Pa_SetStreamFinishedCallback(mainStream, paStreamFinished);
-    if (err != paNoError) {
-        std::cerr << "PortAudio set stream finished callback failed: " << Pa_GetErrorText(err)
-                  << " (" << err << ")" << std::endl;
-        Pa_CloseStream(mainStream);
-        Pa_Terminate();
-        return;
-    }
-
-    err = Pa_StartStream(mainStream);
-    if (err != paNoError) {
-        std::cerr << "PortAudio start stream failed: " << Pa_GetErrorText(err)
-                  << " (" << err << ")" << std::endl;
-        Pa_CloseStream(mainStream);
-        Pa_Terminate();
-        return;
-    }
+    deviceManager_.addAudioCallback(this);
 }
 
 void AudioEngine::stop() {
-    if (mainStream != nullptr) {
-        err = Pa_StopStream(mainStream);
-        if (err != paNoError)
-            std::cerr << "PortAudio stop stream failed: " << Pa_GetErrorText(err) << std::endl;
-        err = Pa_CloseStream(mainStream);
-        if (err != paNoError)
-            std::cerr << "PortAudio close stream failed: " << Pa_GetErrorText(err) << std::endl;
-    }
+    deviceManager_.removeAudioCallback(this);
     // Wake any blocked pushChunk so the physics thread can exit cleanly.
     slotCV_.notify_all();
 }
@@ -85,23 +44,34 @@ void AudioEngine::pushChunk(const float* buffer, size_t numSamples) {
 }
 
 void AudioEngine::delay() {
-    Pa_Sleep(_bufferSize / _sampleRate * 1000);
+    juce::Thread::sleep(_bufferSize * 1000 / _sampleRate);
+}
+void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* /*device*/) {
+    
 }
 
-int AudioEngine::paStreamCB(const void* /*inputBuffer*/, void* outputBuffer,
-                             unsigned long framesPerBuffer,
-                             const PaStreamCallbackTimeInfo* /*timeInfo*/,
-                             PaStreamCallbackFlags /*statusFlags*/, void* userData)
+void AudioEngine::audioDeviceStopped() {
+    
+}
+void AudioEngine::audioDeviceIOCallbackWithContext(
+    const float* const* /*inputChannelData*/,
+    int /*numInputChannels*/,
+    float* const* outputChannelData,
+    int numOutputChannels,
+    int numSamples,
+    const juce::AudioIODeviceCallbackContext& /*context*/)
 {
-    return static_cast<AudioEngine*>(userData)->internalAudioCB(
-        static_cast<float*>(outputBuffer), framesPerBuffer);
+    // Clear any channels beyond the first (safety for unexpected device configs).
+    for (int ch = 1; ch < numOutputChannels; ++ch)
+        if (outputChannelData[ch])
+            std::fill(outputChannelData[ch], outputChannelData[ch] + numSamples, 0.0f);
+ 
+    if (outputChannelData[0])
+        internalAudioCB(outputChannelData[0], numSamples);
 }
 
-void AudioEngine::paStreamFinished(void*) {
-    std::cout << "PortAudio stream finished.\n";
-}
 
-int AudioEngine::internalAudioCB(float* out, unsigned long frames) {
+void AudioEngine::internalAudioCB(float* out, int frames) {
     unsigned long filled = 0;
     while (filled < frames) {
         int ix = read_ix.load(std::memory_order_relaxed);
@@ -135,5 +105,5 @@ int AudioEngine::internalAudioCB(float* out, unsigned long frames) {
         }
     }
 
-    return paContinue;
+    
 }

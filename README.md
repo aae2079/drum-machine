@@ -15,7 +15,7 @@ This drum machine simulates the vibration of a 2D circular membrane (like a drum
 
 - **Physics-Based Synthesis**: Solves the 2D wave equation in polar coordinates using finite difference method
 - **Threaded Physics Engine**: Physics runs in a dedicated background thread (`PhysicsThread`), decoupled from the render loop via mutex/condition-variable queues
-- **Real-Time Audio**: 96 kHz audio output via PortAudio with ring-buffer producer-consumer decoupling
+- **Real-Time Audio**: 96 kHz audio output via JUCE with ring-buffer producer-consumer decoupling
 - **Audio DSP Toolbox**: Dedicated dsp module (`AudioDSP_Toolbox`) for resampling and gain
 - **JSON Configuration**: All simulation and audio parameters loaded at runtime from `drum_config.json` — no recompilation required
 - **Strike Placement**: Ray-cast mouse interaction lets you strike any point on the membrane; strike position (r, θ) is passed to the physics solver
@@ -39,7 +39,7 @@ drum-machine/
 │   │       ├── dsp/
 │   │       │   └── audioDSP.cc             # AudioDSP_Toolbox: resampling & DSP utilities
 │   │       └── engine/
-│   │           └── audioEngine.cc          # PortAudio I/O with ring buffer
+│   │           └── audioEngine.cc          # JUCE Audio I/O with ring buffer
 │   ├── frontend/
 │   │   ├── drumRenderer.cc                 # OpenGL rendering
 │   │   ├── default.vert                    # Vertex shader
@@ -75,20 +75,29 @@ drum-machine/
 - C++ compiler with C++17 support
 - OpenGL 3.3+ drivers installed
 - GLFW 3.3+ development files
-- PortAudio 2.0+ development files
+- JUCE 8.0.0+ development files
 - GLM headers installed
 - OpenMP library available
-- pkg-config utility
 
 
 **macOS**:
 ```bash
-brew install cmake glfw portaudio glm rapidjson-dev
+brew install cmake glfw glm rapidjson-dev
 ```
 
 **Linux (Ubuntu/Debian)**:
 ```bash
-sudo apt-get install cmake libglfw3-dev portaudio19-dev libglm-dev rapidjson-dev
+sudo apt install cmake libglfw3-dev libglm-dev rapidjson-dev
+
+#must install JUCE dependencies
+sudo apt update
+sudo apt install libasound2-dev libjack-jackd2-dev \
+    ladspa-sdk \
+    libcurl4-openssl-dev  \
+    libfreetype-dev libfontconfig1-dev \
+    libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev \
+    libwebkit2gtk-4.1-dev \
+    libglu1-mesa-dev mesa-common-dev
 ```
 
 **Clone Repo**:
@@ -224,7 +233,7 @@ The Gaussian width is controlled inside `CircularMembrane::setInitialCondition()
 - `applyGain()`: Scales the audio buffer before pushing to the ring buffer
 
 ### AudioEngine (Audio I/O)
-- PortAudio wrapper with a 15-slot ring buffer for producer-consumer audio streaming
+- JUCE audioDeviceIOCallbackWithContext implementation with a 15-slot ring buffer for producer-consumer audio streaming
 - `pushChunk()` is called from the physics thread; the real-time callback drains it
 
 ### DrumRenderer (Visualization)
@@ -298,11 +307,6 @@ Generates `output.wav`. Compile the test with `WAVE_FILE 1` in `test/rectangular
 
 ### Build Issues
 
-**PortAudio not found**:
-```bash
-export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
-./clean_build.sh
-```
 
 **GLFW linking errors**:
 ```bash
@@ -318,7 +322,6 @@ sudo apt-get install --reinstall libglfw3-dev
 
 **No audio output**:
 - Check system volume and audio device
-- Verify PortAudio initialization in console output
 - Confirm `audio.sample_rate` and `audio.buffer_size` in `drum_config.json`
 
 **Simulation too fast/slow**:
@@ -338,7 +341,7 @@ sudo apt-get install --reinstall libglfw3-dev
 - Wave equation FDM: https://en.wikipedia.org/wiki/Finite_difference_method
 
 ### Audio Programming
-- PortAudio: http://www.portaudio.com/
+- JUCE: http://www.juce.com
 - PCM Audio Basics: https://en.wikipedia.org/wiki/Pulse-code_modulation
 
 ### Graphics
