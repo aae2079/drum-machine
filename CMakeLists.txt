@@ -32,10 +32,6 @@ find_package(glm    REQUIRED)
 function(apply_common_options target)
     target_compile_definitions(${target} PRIVATE
         $<$<CONFIG:Debug>:DEBUG=1>
-    )
-
-    target_compile_definitions(${target} PRIVATE
-        $<$<CONFIG:Debug>:DEBUG=1>
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
         JUCE_DISPLAY_SPLASH_SCREEN=0

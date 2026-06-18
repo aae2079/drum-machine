@@ -9,7 +9,6 @@ rm -rf ./*
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Running on macOS"
-    export PKG_CONFIG_PATH="$(brew --prefix portaudio)/lib/pkgconfig"
     CXX_COMPILER=$(xcrun -find c++)
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     echo "Running on Linux"

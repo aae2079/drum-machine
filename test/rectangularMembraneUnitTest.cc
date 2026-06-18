@@ -8,7 +8,6 @@
 #include <fstream>
 #include <cstdint>
 #include <chrono>
-#include "portaudio.h"
 #include <algorithm>
 #include <cstring>
 #include <string>
