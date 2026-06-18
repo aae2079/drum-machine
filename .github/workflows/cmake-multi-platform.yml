@@ -2,7 +2,7 @@ name: CMake on multiple platforms
 
 on:
   push: [main]
-  pull_request: [main]
+  pull_request:
 
 jobs:
   build:
