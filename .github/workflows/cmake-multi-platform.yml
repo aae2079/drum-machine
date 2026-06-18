@@ -49,24 +49,24 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y
-          libgl1-mesa-dev
-          libglu1-mesa-dev
-          libglfw3-dev
-          portaudio19-dev
-          libglm-dev
-          libxrandr-dev
-          libxinerama-dev
-          libxcursor-dev
-          libxi-dev
-          libomp-dev
-          pkg-config
-          rapidjson-dev
-          libfreetype6-dev
-          libfontconfig1-dev
-          libgtk-3-dev
-          libwebkit2gtk-4.0-dev
-          libgdk-pixbuf2.0-dev
+        sudo apt-get install -y \
+          libgl1-mesa-dev \
+          libglu1-mesa-dev \
+          libglfw3-dev \
+          portaudio19-dev \
+          libglm-dev \
+          libxrandr-dev \
+          libxinerama-dev \
+          libxcursor-dev \
+          libxi-dev \
+          libomp-dev \
+          pkg-config \
+          rapidjson-dev \
+          libfreetype6-dev \
+          libfontconfig1-dev \
+          libgtk-3-dev \
+          libwebkit2gtk-4.0-dev \
+          libgdk-pixbuf2.0-dev \
           libx11-dev
     - name: Install Windows dependencies
       if: runner.os == 'Windows'
