@@ -47,7 +47,7 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew update
-        brew install cmake glfw glm rapidjson-dev pkg-config freetype fontconfig ninja
+        brew install cmake glfw glm rapidjson pkg-config freetype fontconfig ninja
     - name: Install Linux dependencies
       if: runner.os == 'Linux'
       run: |
