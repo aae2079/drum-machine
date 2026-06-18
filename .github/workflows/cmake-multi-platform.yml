@@ -27,6 +27,9 @@ jobs:
           - os: macos-latest
             c_compiler: clang
             cpp_compiler: clang++
+          - os: macos-latest
+            c_compiler: gcc
+            cpp_compiler: g++
         exclude:
           - os: windows-latest
             c_compiler: gcc
@@ -44,7 +47,9 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         brew update
-        brew install cmake pkg-config freetype fontconfig ninja
+        brew install cmake\ 
+          glfw glm rapidjson-dev\
+          pkg-config freetype fontconfig ninja
     - name: Install Linux dependencies
       if: runner.os == 'Linux'
       run: |
