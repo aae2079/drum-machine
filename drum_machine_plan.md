@@ -1,6 +1,6 @@
 # 2D Membrane Drum Machine - Complete Implementation Plan
 
-**Tech Stack**: C++ with OpenGL (GLFW) and PortAudio
+**Tech Stack**: C++ with OpenGL (GLFW) and JUCE
 
 
 ## Project Overview

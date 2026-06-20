@@ -1,7 +1,8 @@
 name: CMake on multiple platforms
 
 on:
-  push:
+  push: 
+    branches: [main]
   pull_request:
 
 jobs:
@@ -11,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         build_type: [Release]
         c_compiler: [gcc, clang, cl]
         include:
@@ -24,6 +25,9 @@ jobs:
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
+          - os: macos-latest
+            c_compiler: clang
+            cpp_compiler: clang++
         exclude:
           - os: windows-latest
             c_compiler: gcc
@@ -31,43 +35,84 @@ jobs:
             c_compiler: clang
           - os: ubuntu-latest
             c_compiler: cl
+          - os: macos-latest
+            c_compiler: cl
+          - os: macos-latest
+            c_compiler: gcc
 
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install macOS dependencies
+      if: runner.os == 'macOS'
+      run: |
+        brew update
+        brew install cmake glfw glm rapidjson pkg-config freetype fontconfig ninja libomp
+
+        LIBOMP_PREFIX="$(brew --prefix libomp)"
+        echo "OPENMP_C_FLAGS=-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include" >> "$GITHUB_ENV"
+        echo "OPENMP_CXX_FLAGS=-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include" >> "$GITHUB_ENV"
+        echo "OPENMP_EXE_LINKER_FLAGS=-L${LIBOMP_PREFIX}/lib -lomp" >> "$GITHUB_ENV"
+        echo "LIBOMP_PREFIX=${LIBOMP_PREFIX}" >> "$GITHUB_ENV"
+
     - name: Install Linux dependencies
       if: runner.os == 'Linux'
       run: |
-        sudo apt-get install -y \
-        libgl1-mesa-dev \
-        libglu1-mesa-dev \
-        libglfw3-dev \
-        portaudio19-dev \
-        libglm-dev \
-        libxrandr-dev \
-        libxinerama-dev \
-        libxcursor-dev \
-        libxi-dev \
-        libomp-dev \
-        pkg-config \
-        rapidjson-dev \
-        libfreetype6-dev \
-        libfontconfig1-dev \
-        libharfbuzz-dev \
-        libgtk-3-dev \
-        libwebkit2gtk-4.0-dev
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          libglu1-mesa-dev \
+          mesa-common-dev \
+          libglfw3-dev \
+          libglm-dev \
+          libxrandr-dev \
+          libxinerama-dev \
+          libxcursor-dev \
+          libxext-dev \
+          libxcomposite-dev \
+          libxrender-dev \
+          libxi-dev \
+          libx11-dev \
+          libomp-dev \
+          pkg-config \
+          rapidjson-dev \
+          libfreetype-dev \
+          libfontconfig1-dev \
+          libgtk-3-dev \
+          libwebkit2gtk-4.1-dev \
+          libgdk-pixbuf2.0-dev \
+          libasound2-dev \
+          libjack-jackd2-dev \
+          ladspa-sdk \
+          libcurl4-openssl-dev
+
     - name: Install Windows dependencies
       if: runner.os == 'Windows'
       run: |
-        vcpkg install pkgconf opengl glfw3 portaudio glm rapidjson --triplet x64-windows
+        vcpkg install pkgconf opengl glfw3 glm rapidjson --triplet x64-windows
         vcpkg integrate install
+
     - name: Set reusable strings
       id: strings
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Configure CMake
+    - name: Configure CMake (macOS)
+      if: runner.os == 'macOS'
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp -I${{ env.LIBOMP_PREFIX }}/include"
+        -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I${{ env.LIBOMP_PREFIX }}/include"
+        -DOpenMP_C_LIB_NAMES="omp"
+        -DOpenMP_CXX_LIB_NAMES="omp"
+        -DOpenMP_omp_LIBRARY="${{ env.LIBOMP_PREFIX }}/lib/libomp.dylib"
+        -S ${{ github.workspace }}
+
+    - name: Configure CMake (Linux / Windows)
+      if: runner.os != 'macOS'
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
@@ -81,4 +126,4 @@ jobs:
 
     - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: ctest --build-config ${{ matrix.build_type }}
+      run: ctest --build-config ${{ matrix.build_type }} --output-on-failure
