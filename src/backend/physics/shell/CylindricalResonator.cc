@@ -26,9 +26,9 @@ void CylindricalResonator::init(float radius, float length, float time_step,floa
     //set boundary condtions
     // cylindrical wall dp/dr_ = 0 
     // ends of cylinder dp/dz_ = 0
-    for (int ii = 0; ii < Nr_; ii++) {
-        for (int jj = 0; jj < Ntheta_; jj++) {
-            for (int kk = 0; kk < Nz_; kk++) {
+    for (auto ii = 0; ii < Nr_; ii++) {
+        for (auto jj = 0; jj < Ntheta_; jj++) {
+            for (auto kk = 0; kk < Nz_; kk++) {
                 int idx = ii * Ntheta_ * Nz_ + jj * Nz_ + kk;
                 if (ii == Nr_ - 1) { // cylindrical wall
                     u_prev_[idx] = 0.0f;
@@ -51,9 +51,9 @@ void CylindricalResonator::resetStateVectors(){
     u_next_ = std::vector<float>(Nr_ * Ntheta_ * Nz_, 0.0f);
 
     //reset BC
-    for (int ii = 0; ii < Nr_; ii++) {
-        for (int jj = 0; jj < Ntheta_; jj++) {
-            for (int kk = 0; kk < Nz_; kk++) {
+    for (auto ii = 0; ii < Nr_; ii++) {
+        for (auto jj = 0; jj < Ntheta_; jj++) {
+            for (auto kk = 0; kk < Nz_; kk++) {
                 int idx = ii * Ntheta_ * Nz_ + jj * Nz_ + kk;
                 if (ii == Nr_ - 1) { // cylindrical wall
                     u_prev_[idx] = 0.0f;
@@ -72,8 +72,8 @@ void CylindricalResonator::resetStateVectors(){
 
 void CylindricalResonator::setVelocityField(std::vector<float>& v_2d){
     // Set it at the bottom (z=0) of the 3D domain
-    for (int ii = 0; ii < Nr_; ii++) {
-        for (int jj = 0; jj < Ntheta_; jj++) {
+    for (auto ii = 0; ii < Nr_; ii++) {
+        for (auto jj = 0; jj < Ntheta_; jj++) {
             int idx_2d = ii * Ntheta_ + jj;
             int idx_3d = ii * Ntheta_ * Nz_ + jj * Nz_ + 0;
             u_curr_[idx_3d] = v_2d[idx_2d];
@@ -84,8 +84,8 @@ void CylindricalResonator::setVelocityField(std::vector<float>& v_2d){
 std::vector<float> CylindricalResonator::getMembraneBoundaryPressure() {
     // Extract (Nr x Ntheta) slice at z=0
     std::vector<float> p_2d(Nr_ * Ntheta_);
-    for (int ii = 0; ii < Nr_; ii++) {
-        for (int jj = 0; jj < Ntheta_; jj++) {
+    for (auto ii = 0; ii < Nr_; ii++) {
+        for (auto jj = 0; jj < Ntheta_; jj++) {
             int idx_2d = ii * Ntheta_ + jj;
             int idx_3d = ii * Ntheta_ * Nz_ + jj * Nz_ + 0;
             p_2d[idx_2d] = u_curr_[idx_3d];
@@ -96,11 +96,11 @@ std::vector<float> CylindricalResonator::getMembraneBoundaryPressure() {
 
 void CylindricalResonator::Simulate(int physSteps) {
     // Simulate resonator response based on current state and inputs
-    for (int tt = 0; tt < physSteps; tt++) {
-        for (int ii = 1; ii < Nr_ - 1; ii++) {
+    for (auto tt = 0; tt < physSteps; tt++) {
+        for (auto ii = 1; ii < Nr_ - 1; ii++) {
             float r = ii * dr_;
-            for (int jj = 0; jj < Ntheta_; jj++) {
-                for (int kk = 1; kk < Nz_ - 1; kk++) {
+            for (auto jj = 0; jj < Ntheta_; jj++) {
+                for (auto kk = 1; kk < Nz_ - 1; kk++) {
                     int idx     = ii       * Ntheta_ * Nz_ + jj                       * Nz_ + kk;
                     int idx_ip1 = (ii + 1) * Ntheta_ * Nz_ + jj                       * Nz_ + kk;
                     int idx_im1 = (ii - 1) * Ntheta_ * Nz_ + jj                       * Nz_ + kk;

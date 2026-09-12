@@ -72,7 +72,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(
 
 
 void AudioEngine::internalAudioCB(float* out, int frames) {
-    unsigned long filled = 0;
+    int filled = 0;
     while (filled < frames) {
         int ix = read_ix.load(std::memory_order_relaxed);
         Data& cur = ringBuf[ix];
